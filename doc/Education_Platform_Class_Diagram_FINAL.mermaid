@@ -1,0 +1,223 @@
+classDiagram
+  class User {
+    +string id
+    +string firstName
+    +string lastName
+    +string email
+    +string phone
+    +string passwordHash
+    +string role
+    +string photoUrl
+  }
+  note for User "role: super_admin | admin_staff | teacher | parent | student
+  Pas de table SuperAdmin/AdminStaff dediee : aucun attribut propre, le role suffit"
+
+  class Teacher {
+    +string idCardUrl
+    +string cvUrl
+    +string degreesUrl
+    +string locationPlanUrl
+    +string bio
+    +float experienceYears
+    +float teachingRadiusKm
+    +string location
+    +float expectedRate
+    +string validationStatus
+    +string rank
+    +int rankPoints
+    +bool eligibleForPromotion
+    +int stars
+    +float balance
+  }
+  class Parent {
+    +string address
+    +string idCardPhotoUrl
+  }
+
+  User <|-- Teacher
+  User <|-- Parent
+
+  class Learner {
+    +string type
+    +string parentId
+    +string userId
+    +string section
+    +string schoolName
+    +string location
+  }
+  note for Learner "type: self | child
+  parentId rempli si child, userId rempli si self
+  au moins un des deux doit etre rempli"
+  Parent "1" --> "many" Learner
+  User "1" --> "0..1" Learner : self-registered
+
+  class Subject {
+    +string id
+    +string name
+  }
+  class Level {
+    +string id
+    +string name
+  }
+  class ClassRoom {
+    +string id
+    +string name
+  }
+  class DepartmentHead {
+    +date appointedAt
+  }
+  class TeacherSubject {
+    +bool validated
+    +date validatedAt
+  }
+
+  Learner "many" --> "1" Level
+  Learner "many" --> "1" ClassRoom
+  Teacher "1" --> "0..1" DepartmentHead : may hold
+  DepartmentHead "1" --> "1" Subject : heads
+  Level "1" --> "many" ClassRoom : contains
+  Teacher "1" --> "many" TeacherSubject
+  Subject "1" --> "many" TeacherSubject
+  ClassRoom "1" --> "many" TeacherSubject
+  Teacher "1" --> "many" TeacherSubject : validatedBy(HOD)
+
+  class TeacherAvailability {
+    +string dayOfWeek
+    +string startTime
+    +string endTime
+  }
+  Teacher "1" --> "many" TeacherAvailability
+
+  class TutoringRequest {
+    +string subjectId
+    +string location
+    +string preferredDays
+    +string preferredTime
+    +string status
+  }
+  Learner "1" --> "many" TutoringRequest
+
+  class Assignment {
+    +string status
+    +float agreedPrice
+    +bool validatedByAdmin
+  }
+  TutoringRequest "1" --> "many" Assignment
+  Teacher "1" --> "many" Assignment
+
+  class Session {
+    +date sessionDate
+    +string startTime
+    +string endTime
+    +string location
+    +string status
+  }
+  Assignment "1" --> "many" Session
+
+  class Payment {
+    +float amount
+    +string currency
+    +string method
+    +string period
+    +string status
+    +float commissionAmount
+    +float teacherAmount
+    +string escrowStatus
+    +date escrowReleaseDate
+  }
+  Assignment "1" --> "many" Payment
+
+  class Dispute {
+    +string raisedBy
+    +string reason
+    +string status
+    +string resolution
+  }
+  Session "1" --> "0..1" Dispute
+
+  class AcademicEvaluation {
+    +string title
+    +date evalDate
+  }
+  class Question {
+    +string text
+    +string correctAnswer
+  }
+  Teacher "1" --> "many" AcademicEvaluation : createdBy(HOD)
+  AcademicEvaluation "1" --> "many" Question
+
+  class Result {
+    +float score
+    +string grade
+    +string term
+    +string academicYear
+    +string comments
+  }
+  Learner "1" --> "many" Result
+  AcademicEvaluation "1" --> "many" Result
+  Teacher "1" --> "many" Result
+
+  class TeacherReview {
+    +int rating
+    +string comment
+    +string criteria
+  }
+  Teacher "1" --> "many" TeacherReview
+  Session "1" --> "0..1" TeacherReview
+
+  class MonthlyAward {
+    +string awardType
+    +string month
+    +int year
+    +float score
+    +string prizeDescription
+    +string teacherId
+    +string learnerId
+  }
+  note for MonthlyAward "teacherId et learnerId nullables,
+  contrainte : un seul des deux rempli
+  awardType inclut most_progressive_student"
+  Teacher "1" --> "many" MonthlyAward
+  Learner "1" --> "many" MonthlyAward
+
+  class LectureNote {
+    +string title
+    +string fileUrl
+    +string status
+  }
+  Teacher "1" --> "many" LectureNote : submits
+  Teacher "1" --> "many" LectureNote : validates(HOD)
+
+  class CompetitiveExam {
+    +string name
+    +string institution
+    +string city
+    +string field
+    +date examDate
+    +string admissionRequirements
+  }
+  class ExamPreparationTrack {
+    +string subjectsCovered
+  }
+  CompetitiveExam "1" --> "many" ExamPreparationTrack
+  Learner "1" --> "many" ExamPreparationTrack
+  Teacher "1" --> "many" ExamPreparationTrack
+
+  class Permission {
+    +string key
+    +string label
+  }
+  class AdminPermission {
+    +string userId
+    +string permissionId
+  }
+  User "1" --> "many" AdminPermission
+  Permission "1" --> "many" AdminPermission
+
+  class Notification {
+    +string notifType
+    +string message
+    +bool isRead
+    +date createdAt
+  }
+  User "1" --> "many" Notification

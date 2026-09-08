@@ -1,0 +1,76 @@
+<?php
+
+use App\Http\Controllers\Auth\AuthController;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\TeacherValidationController;
+use App\Http\Controllers\Admin\TeacherSubjectValidationController;
+use App\Http\Controllers\Admin\ClassroomController;
+use App\Http\Controllers\Admin\LevelController;
+use App\Http\Controllers\Admin\SubjectController;
+use App\Http\Controllers\TutoringRequestController;
+use App\Http\Controllers\AssignmentController;
+
+
+
+Route::prefix('auth')->group(function () {
+    Route::post('/register/parent', [AuthController::class, 'registerParent']);
+    Route::post('/register/teacher', [AuthController::class, 'registerTeacher']);
+    Route::post('/register/student', [AuthController::class, 'registerStudent']);
+    Route::post('/login', [AuthController::class, 'login']);
+
+    Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
+});
+
+Route::middleware(['auth:sanctum', 'role:super_admin,admin_staff'])->prefix('admin')->group(function () {
+ 
+    // --- Validation globale du profil enseignant ---
+    Route::get('/teachers/pending', [TeacherValidationController::class, 'pending']);
+    Route::patch('/teachers/{teacher}/validate', [TeacherValidationController::class, 'validateProfile']);
+ 
+    // --- Validation d'une matière déclarée (HOD non implémenté pour l'instant, géré par l'Admin) ---
+    Route::get('/subjects/{subject}/pending-teachers', [TeacherSubjectValidationController::class, 'pending']);
+    Route::patch('/teachers/{teacher}/subjects/{subject}/validate', [TeacherSubjectValidationController::class, 'validateSubject']);
+});
+
+
+ 
+// --- Lecture publique (nécessaire aux formulaires d'inscription) ---
+Route::get('/subjects', [SubjectController::class, 'index']);
+Route::get('/levels', [LevelController::class, 'index']);
+Route::get('/levels/{level}/classes', [ClassRoomController::class, 'index']);
+ 
+// --- Écriture réservée à l'Admin ---
+Route::middleware(['auth:sanctum', 'role:super_admin,admin_staff'])->prefix('admin')->group(function () {
+    Route::post('/subjects', [SubjectController::class, 'store']);
+    Route::patch('/subjects/{subject}', [SubjectController::class, 'update']);
+    Route::delete('/subjects/{subject}', [SubjectController::class, 'destroy']);
+ 
+    Route::post('/levels', [LevelController::class, 'store']);
+    Route::patch('/levels/{level}', [LevelController::class, 'update']);
+    Route::delete('/levels/{level}', [LevelController::class, 'destroy']);
+ 
+    Route::post('/levels/{level}/classes', [ClassroomController::class, 'store']);
+    Route::patch('/classes/{classroom}', [ClassroomController::class, 'update']);
+    Route::delete('/classes/{classroom}', [ClassroomController::class, 'destroy']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/tutoring-requests', [TutoringRequestController::class, 'store']);
+    Route::get('/tutoring-requests/{tutoringRequest}/matches', [TutoringRequestController::class, 'matches']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    // Autorisation fine faite dans le contrôleur (propriétaire / enseignant assigné / admin)
+    Route::post('/tutoring-requests/{tutoringRequest}/assignments', [AssignmentController::class, 'store']);
+    Route::get('/assignments/{assignment}', [AssignmentController::class, 'show']);
+    Route::patch('/assignments/{assignment}/cancel', [AssignmentController::class, 'cancel']);
+    Route::get('/teachers/{teacher}/assignments', [AssignmentController::class, 'teacherAssignments']);
+
+    // Réservé à l'Admin (middleware 'role')
+    Route::middleware('role:super_admin,admin_staff')->prefix('admin')->group(function () {
+        Route::patch('/assignments/{assignment}/validate', [AssignmentController::class, 'validateAssignment']);
+        Route::patch('/assignments/{assignment}/price', [AssignmentController::class, 'setPrice']);
+    });
+});
+
+ 
