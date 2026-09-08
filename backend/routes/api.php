@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\TutoringRequestController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\SessionController;
+use App\Http\Controllers\PaymentController;
 
 
 
@@ -79,4 +80,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/sessions/{session}/confirm', [SessionController::class, 'confirm']);
 });
 
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/assignments/{assignment}/payments', [PaymentController::class, 'store']);
+    Route::post('/payments/{payment}/simulate', [PaymentController::class, 'simulate']);
+ 
+    Route::middleware('role:super_admin,admin_staff')->prefix('admin')->group(function () {
+        Route::patch('/payments/{payment}/release', [PaymentController::class, 'release']);
+        Route::patch('/payments/{payment}/refund', [PaymentController::class, 'refund']);
+        Route::get('/settings/commission-rate', [PaymentController::class, 'getCommissionRate']);
+        Route::patch('/settings/commission-rate', [PaymentController::class, 'setCommissionRate']);
+    });
+});
+ 
  
