@@ -35,10 +35,10 @@ class Session extends Model
         return $this->belongsTo(Assignment::class, 'assignment_id');
     }
 
-    // public function dispute()
-    // {
-    //     return $this->hasOne(Dispute::class, 'session_id');
-    // }
+    public function dispute()
+    {
+        return $this->hasOne(Dispute::class, 'session_id');
+    }
 
     // public function review()
     // {

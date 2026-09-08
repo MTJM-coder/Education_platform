@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\LevelController;
 use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\TutoringRequestController;
 use App\Http\Controllers\AssignmentController;
+use App\Http\Controllers\SessionController;
 
 
 
@@ -23,23 +24,22 @@ Route::prefix('auth')->group(function () {
 
 Route::middleware(['auth:sanctum', 'role:super_admin,admin_staff'])->prefix('admin')->group(function () {
  
-    // --- Validation globale du profil enseignant ---
+    //  Validation globale du profil enseignant 
     Route::get('/teachers/pending', [TeacherValidationController::class, 'pending']);
     Route::patch('/teachers/{teacher}/validate', [TeacherValidationController::class, 'validateProfile']);
  
-    // --- Validation d'une matière déclarée (HOD non implémenté pour l'instant, géré par l'Admin) ---
+    // Validation d'une matière déclarée 
     Route::get('/subjects/{subject}/pending-teachers', [TeacherSubjectValidationController::class, 'pending']);
     Route::patch('/teachers/{teacher}/subjects/{subject}/validate', [TeacherSubjectValidationController::class, 'validateSubject']);
 });
 
 
- 
-// --- Lecture publique (nécessaire aux formulaires d'inscription) ---
+
 Route::get('/subjects', [SubjectController::class, 'index']);
 Route::get('/levels', [LevelController::class, 'index']);
 Route::get('/levels/{level}/classes', [ClassRoomController::class, 'index']);
  
-// --- Écriture réservée à l'Admin ---
+//Écriture réservée à l'Admin
 Route::middleware(['auth:sanctum', 'role:super_admin,admin_staff'])->prefix('admin')->group(function () {
     Route::post('/subjects', [SubjectController::class, 'store']);
     Route::patch('/subjects/{subject}', [SubjectController::class, 'update']);
@@ -66,11 +66,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/assignments/{assignment}/cancel', [AssignmentController::class, 'cancel']);
     Route::get('/teachers/{teacher}/assignments', [AssignmentController::class, 'teacherAssignments']);
 
-    // Réservé à l'Admin (middleware 'role')
+    // Réservé à l'Admin 
     Route::middleware('role:super_admin,admin_staff')->prefix('admin')->group(function () {
         Route::patch('/assignments/{assignment}/validate', [AssignmentController::class, 'validateAssignment']);
         Route::patch('/assignments/{assignment}/price', [AssignmentController::class, 'setPrice']);
     });
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/assignments/{assignment}/sessions', [SessionController::class, 'store']);
+    Route::get('/assignments/{assignment}/sessions', [SessionController::class, 'index']);
+    Route::patch('/sessions/{session}/confirm', [SessionController::class, 'confirm']);
 });
 
  

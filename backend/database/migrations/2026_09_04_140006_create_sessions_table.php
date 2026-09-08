@@ -20,7 +20,9 @@ return new class extends Migration
             $table->time('end_time');
             $table->string('location')->nullable();
             $table->string('status')->default('scheduled');
-
+            $table->timestamp('confirmed_by_teacher_at')->nullable();
+            $table->timestamp('confirmed_by_parent_at')->nullable();
+ 
             $table->index('assignment_id', 'idx_sessions_assignment');
         });
 
