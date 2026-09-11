@@ -12,6 +12,8 @@ use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\DisputeController;
+use App\Http\Controllers\AcademicEvaluationController;
+use App\Http\Controllers\ResultController;
 
 
 
@@ -100,6 +102,19 @@ Route::middleware('auth:sanctum')->group(function () {
  
     Route::middleware('role:super_admin,admin_staff')->prefix('admin')->group(function () {
         Route::patch('/disputes/{dispute}/resolve', [DisputeController::class, 'resolve']);
+    });
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/evaluations/{evaluation}', [AcademicEvaluationController::class, 'show']);
+    Route::get('/evaluations/{evaluation}/questions', [AcademicEvaluationController::class, 'listQuestions']);
+    Route::post('/evaluations/{evaluation}/results', [ResultController::class, 'store']);
+    Route::get('/learners/{learner}/results', [ResultController::class, 'learnerResults']);
+ 
+    Route::middleware('role:super_admin,admin_staff')->prefix('admin')->group(function () {
+        Route::post('/subjects/{subject}/evaluations', [AcademicEvaluationController::class, 'store']);
+        Route::post('/evaluations/{evaluation}/questions', [AcademicEvaluationController::class, 'addQuestion']);
+        Route::get('/evaluations/{evaluation}/results', [ResultController::class, 'evaluationResults']);
     });
 });
  

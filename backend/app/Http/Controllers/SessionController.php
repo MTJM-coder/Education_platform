@@ -63,7 +63,6 @@ class SessionController extends Controller
     }
 
     // PATCH /sessions/{session}/confirm
-    // Autorisation : le parent/learner propriétaire, ou l'enseignant assigné.
     public function confirm(Request $request, Session $session)
     {
         $assignment = $session->assignment;

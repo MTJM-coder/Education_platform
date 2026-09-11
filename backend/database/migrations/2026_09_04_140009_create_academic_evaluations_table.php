@@ -19,7 +19,7 @@ return new class extends Migration
             $table->date('eval_date')->nullable();
 
             $table->uuid('created_by');
-            $table->foreign('created_by')->references('user_id')->on('teachers');
+            $table->foreign('created_by')->references('id')->on('users');
         });
     }
 
