@@ -73,19 +73,31 @@ class PaymentController extends Controller
 
     // PATCH /admin/payments/{payment}/release
     // Autorisation : Admin uniquement (middleware 'role' sur la route).
-    public function release(Payment $payment)
+   public function release(Payment $payment)
     {
         if ($payment->status !== 'paid' || $payment->escrow_status !== 'held') {
             return response()->json([
                 'message' => 'Ce paiement ne peut pas être libéré dans son état actuel.',
             ], 422);
         }
-
+ 
+        $hasUnresolvedDispute = $payment->assignment->sessions()
+            ->whereHas('dispute', function ($query) {
+                $query->where('status', '!=', 'resolved');
+            })
+            ->exists();
+ 
+        if ($hasUnresolvedDispute) {
+            return response()->json([
+                'message' => 'Un litige est en cours sur une séance de cette affectation : libération bloquée tant qu\'il n\'est pas résolu.',
+            ], 422);
+        }
+ 
         $payment->update([
             'escrow_status'       => 'released',
             'escrow_release_date' => now(),
         ]);
-
+ 
         return response()->json($payment->fresh());
     }
 
@@ -99,12 +111,12 @@ class PaymentController extends Controller
                 'message' => 'Ce paiement a déjà été libéré à l\'enseignant, remboursement impossible.',
             ], 422);
         }
-
+ 
         $payment->update([
             'status'        => 'refunded',
             'escrow_status' => 'refunded',
         ]);
-
+ 
         return response()->json($payment->fresh());
     }
 
@@ -136,4 +148,4 @@ class PaymentController extends Controller
             abort(403, "Vous n'avez pas accès à ce paiement.");
         }
     }
-}
+} 

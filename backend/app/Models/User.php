@@ -73,6 +73,10 @@ class User extends Authenticatable
     {
         return $this->hasOne(Learner::class, 'user_id');
     }
+    public function disputesRaised()
+    {
+        return $this->hasMany(Dispute::class, 'raised_by');
+    }
 
     // public function notifications()
     // {

@@ -11,6 +11,7 @@ use App\Http\Controllers\TutoringRequestController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\DisputeController;
 
 
 
@@ -89,6 +90,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/payments/{payment}/refund', [PaymentController::class, 'refund']);
         Route::get('/settings/commission-rate', [PaymentController::class, 'getCommissionRate']);
         Route::patch('/settings/commission-rate', [PaymentController::class, 'setCommissionRate']);
+    });
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me/disputes', [DisputeController::class, 'index']);
+    Route::get('/disputes/{dispute}', [DisputeController::class, 'show']);
+    Route::post('/sessions/{session}/dispute', [DisputeController::class, 'store']);
+ 
+    Route::middleware('role:super_admin,admin_staff')->prefix('admin')->group(function () {
+        Route::patch('/disputes/{dispute}/resolve', [DisputeController::class, 'resolve']);
     });
 });
  

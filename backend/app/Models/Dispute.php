@@ -19,6 +19,8 @@ class Dispute extends Model
         'reason',
         'status',
         'resolution',
+        'resolved_by',
+        'resolved_at',
     ];
 
     protected $casts = [
@@ -33,5 +35,10 @@ class Dispute extends Model
     public function raisedBy()
     {
         return $this->belongsTo(User::class, 'raised_by');
+    }
+
+    public function resolvedBy()
+    {
+        return $this->belongsTo(User::class, 'resolved_by');
     }
 }
