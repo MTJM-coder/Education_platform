@@ -22,10 +22,7 @@ class TeacherReviewFactory extends Factory
         ];
     }
 
-    /**
-     * Attache l'avis à une affectation déjà existante plutôt que d'en créer une.
-     * Usage : TeacherReview::factory()->forAssignment($assignment)->create();
-     */
+    
     public function forAssignment(Assignment $assignment): static
     {
         return $this->state(fn (array $attributes) => [

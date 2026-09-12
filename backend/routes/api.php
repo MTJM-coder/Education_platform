@@ -15,7 +15,7 @@ use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\AcademicEvaluationController;
 use App\Http\Controllers\ResultController;
 use App\Http\Controllers\TeacherReviewController;
-
+use App\Http\Controllers\AwardController;
 
 
 Route::prefix('auth')->group(function () {
@@ -124,3 +124,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/assignments/{assignment}/review', [TeacherReviewController::class, 'show']);
     Route::put('/assignments/{assignment}/review', [TeacherReviewController::class, 'store']);
 });
+
+Route::get('/awards/monthly', [AwardController::class, 'index']);
+ 
+Route::middleware(['auth:sanctum', 'role:super_admin,admin_staff'])->prefix('admin')->group(function () {
+    Route::post('/awards/compute', [AwardController::class, 'compute']);
+    Route::patch('/awards/{award}/prize', [AwardController::class, 'setPrize']);
+});
+ 
