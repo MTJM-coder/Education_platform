@@ -51,9 +51,6 @@ class DisputeController extends Controller
         return response()->json($dispute->load('session.assignment', 'raisedBy', 'resolvedBy'));
     }
 
-    // POST /sessions/{session}/dispute
-    // Autorisation : enseignant assigné, ou propriétaire (parent/learner) de la séance,
-    // ou Admin (CreateDisputeRequest::authorize()).
     public function store(CreateDisputeRequest $request, Session $session)
     {
         if (Dispute::where('session_id', $session->id)->exists()) {

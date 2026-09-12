@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -15,24 +15,20 @@ return new class extends Migration
             $table->uuid('teacher_id');
             $table->foreign('teacher_id')->references('user_id')->on('teachers')->onDelete('cascade');
 
-            $table->uuid('session_id')->nullable();
-            $table->foreign('session_id')->references('id')->on('sessions');
+            $table->uuid('assignment_id')->unique(); // un seul avis par affectation (upsert via PUT)
+            $table->foreign('assignment_id')->references('id')->on('assignments')->onDelete('cascade');
 
-            $table->integer('rating');
+            $table->unsignedTinyInteger('rating'); // 1 à 5
             $table->text('comment')->nullable();
-            $table->jsonb('criteria')->nullable();
-            $table->timestampTz('created_at')->useCurrent();
 
-            $table->index('teacher_id', 'idx_reviews_teacher');
+            $table->timestamp('created_at')->useCurrent();
         });
 
         DB::statement("
             ALTER TABLE teacher_reviews
-            ADD CONSTRAINT chk_reviews_rating
+            ADD CONSTRAINT chk_teacher_reviews_rating
             CHECK (rating BETWEEN 1 AND 5)
         ");
-
-        DB::statement("CREATE UNIQUE INDEX idx_one_review_per_session ON teacher_reviews(session_id) WHERE session_id IS NOT NULL");
     }
 
     public function down(): void

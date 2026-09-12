@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 class LevelController extends Controller
 {
-    // GET /levels (public — nécessaire pour les formulaires d'inscription)
+    // (nécessaire pour les formulaires d'inscription)
     public function index()
     {
         return response()->json(['data' => Level::with('classrooms')->orderBy('name')->get()]);

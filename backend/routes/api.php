@@ -14,6 +14,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\AcademicEvaluationController;
 use App\Http\Controllers\ResultController;
+use App\Http\Controllers\TeacherReviewController;
 
 
 
@@ -27,11 +28,11 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::middleware(['auth:sanctum', 'role:super_admin,admin_staff'])->prefix('admin')->group(function () {
- 
+
     //  Validation globale du profil enseignant 
     Route::get('/teachers/pending', [TeacherValidationController::class, 'pending']);
     Route::patch('/teachers/{teacher}/validate', [TeacherValidationController::class, 'validateProfile']);
- 
+
     // Validation d'une matière déclarée 
     Route::get('/subjects/{subject}/pending-teachers', [TeacherSubjectValidationController::class, 'pending']);
     Route::patch('/teachers/{teacher}/subjects/{subject}/validate', [TeacherSubjectValidationController::class, 'validateSubject']);
@@ -42,17 +43,17 @@ Route::middleware(['auth:sanctum', 'role:super_admin,admin_staff'])->prefix('adm
 Route::get('/subjects', [SubjectController::class, 'index']);
 Route::get('/levels', [LevelController::class, 'index']);
 Route::get('/levels/{level}/classes', [ClassRoomController::class, 'index']);
- 
+
 //Écriture réservée à l'Admin
 Route::middleware(['auth:sanctum', 'role:super_admin,admin_staff'])->prefix('admin')->group(function () {
     Route::post('/subjects', [SubjectController::class, 'store']);
     Route::patch('/subjects/{subject}', [SubjectController::class, 'update']);
     Route::delete('/subjects/{subject}', [SubjectController::class, 'destroy']);
- 
+
     Route::post('/levels', [LevelController::class, 'store']);
     Route::patch('/levels/{level}', [LevelController::class, 'update']);
     Route::delete('/levels/{level}', [LevelController::class, 'destroy']);
- 
+
     Route::post('/levels/{level}/classes', [ClassroomController::class, 'store']);
     Route::patch('/classes/{classroom}', [ClassroomController::class, 'update']);
     Route::delete('/classes/{classroom}', [ClassroomController::class, 'destroy']);
@@ -86,7 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/assignments/{assignment}/payments', [PaymentController::class, 'store']);
     Route::post('/payments/{payment}/simulate', [PaymentController::class, 'simulate']);
- 
+
     Route::middleware('role:super_admin,admin_staff')->prefix('admin')->group(function () {
         Route::patch('/payments/{payment}/release', [PaymentController::class, 'release']);
         Route::patch('/payments/{payment}/refund', [PaymentController::class, 'refund']);
@@ -99,7 +100,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me/disputes', [DisputeController::class, 'index']);
     Route::get('/disputes/{dispute}', [DisputeController::class, 'show']);
     Route::post('/sessions/{session}/dispute', [DisputeController::class, 'store']);
- 
+
     Route::middleware('role:super_admin,admin_staff')->prefix('admin')->group(function () {
         Route::patch('/disputes/{dispute}/resolve', [DisputeController::class, 'resolve']);
     });
@@ -110,12 +111,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/evaluations/{evaluation}/questions', [AcademicEvaluationController::class, 'listQuestions']);
     Route::post('/evaluations/{evaluation}/results', [ResultController::class, 'store']);
     Route::get('/learners/{learner}/results', [ResultController::class, 'learnerResults']);
- 
+
     Route::middleware('role:super_admin,admin_staff')->prefix('admin')->group(function () {
         Route::post('/subjects/{subject}/evaluations', [AcademicEvaluationController::class, 'store']);
         Route::post('/evaluations/{evaluation}/questions', [AcademicEvaluationController::class, 'addQuestion']);
         Route::get('/evaluations/{evaluation}/results', [ResultController::class, 'evaluationResults']);
     });
 });
- 
- 
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me/reviews', [TeacherReviewController::class, 'index']);
+    Route::get('/assignments/{assignment}/review', [TeacherReviewController::class, 'show']);
+    Route::put('/assignments/{assignment}/review', [TeacherReviewController::class, 'store']);
+});

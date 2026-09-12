@@ -40,11 +40,6 @@ class Session extends Model
         return $this->hasOne(Dispute::class, 'session_id');
     }
 
-    // public function review()
-    // {
-    //     return $this->hasOne(TeacherReview::class, 'session_id');
-    // }
-
     public function isConfirmedByBoth(): bool
     {
         return $this->confirmed_by_teacher_at !== null && $this->confirmed_by_parent_at !== null;

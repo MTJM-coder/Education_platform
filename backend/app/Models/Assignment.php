@@ -42,8 +42,13 @@ class Assignment extends Model
         return $this->hasMany(Session::class, 'assignment_id');
     }
 
-    // public function payments()
-    // {
-    //     return $this->hasMany(Payment::class, 'assignment_id');
-    // }
+    public function payments()
+    {
+        return $this->hasMany(Payment::class, 'assignment_id');
+    }
+
+    public function review()
+    {
+        return $this->hasOne(TeacherReview::class, 'assignment_id');
+    }
 }

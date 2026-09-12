@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 class ClassroomController extends Controller
 {
-    // GET /levels/{level}/classes (public — nécessaire pour les formulaires d'inscription)
+    
     public function index(Level $level)
     {
         return response()->json(['data' => $level->classrooms()->orderBy('name')->get()]);
