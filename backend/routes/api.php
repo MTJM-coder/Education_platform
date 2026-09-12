@@ -16,7 +16,7 @@ use App\Http\Controllers\AcademicEvaluationController;
 use App\Http\Controllers\ResultController;
 use App\Http\Controllers\TeacherReviewController;
 use App\Http\Controllers\AwardController;
-
+use App\Http\Controllers\LectureNoteController;
 
 Route::prefix('auth')->group(function () {
     Route::post('/register/parent', [AuthController::class, 'registerParent']);
@@ -126,9 +126,26 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::get('/awards/monthly', [AwardController::class, 'index']);
- 
+
 Route::middleware(['auth:sanctum', 'role:super_admin,admin_staff'])->prefix('admin')->group(function () {
     Route::post('/awards/compute', [AwardController::class, 'compute']);
     Route::patch('/awards/{award}/prize', [AwardController::class, 'setPrize']);
 });
- 
+
+
+// Public — aucune authentification requise (notes déjà approuvées uniquement)
+Route::get('/lecture-notes', [LectureNoteController::class, 'index']);
+
+// Authentifié — à placer dans le groupe middleware('auth:sanctum') existant
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/teachers/{teacher}/lecture-notes', [LectureNoteController::class, 'store']);
+    Route::get('/teachers/{teacher}/lecture-notes', [LectureNoteController::class, 'myNotes']);
+    // Admin uniquement — même convention que les autres routes /admin/...
+Route::middleware('role:super_admin,admin_staff')->group(function () {
+    Route::get('/admin/lecture-notes/pending', [LectureNoteController::class, 'pending']);
+    Route::patch('/admin/lecture-notes/{lectureNote}/validate', [LectureNoteController::class, 'validateNote']);
+});
+
+});
+
+

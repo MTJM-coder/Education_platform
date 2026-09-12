@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('status')->default('pending');
 
             $table->uuid('validated_by')->nullable();
-            $table->foreign('validated_by')->references('user_id')->on('teachers');
+            $table->foreign('validated_by')->references('id')->on('users');
 
             $table->timestampTz('validated_at')->nullable();
             $table->timestampTz('created_at')->useCurrent();

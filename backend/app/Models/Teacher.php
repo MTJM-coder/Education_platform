@@ -73,6 +73,11 @@ class Teacher extends Model
         return $this->hasMany(Assignment::class, 'teacher_id');
     }
 
+    public function lectureNotes()
+    {
+        return $this->hasMany(LectureNote::class, 'teacher_id');
+    }
+
     // public function reviews()
     // {
     //     return $this->hasMany(TeacherReview::class, 'teacher_id');
