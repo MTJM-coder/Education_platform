@@ -43,7 +43,8 @@ export default function Hero() {
             className="w-full border-none text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
           />
           <button
-            type="submit"
+            onClick={() => window.location.href = "/search"}
+            type="button"
             className="shrink-0 rounded-full bg-pf-gold px-5 py-2.5 text-sm font-medium text-pf-purple-dark hover:brightness-95"
           >
             Chercher
