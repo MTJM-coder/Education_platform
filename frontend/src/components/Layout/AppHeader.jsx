@@ -1,4 +1,9 @@
 export default function AppHeader({ links = [] }) {
+  const destinations = {
+    Paiements: "/paiements",
+    Litiges: "/litiges",
+  };
+
   return (
     <header className="flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4 sm:px-8">
       <a href="/" className="flex items-center gap-2.5">
@@ -14,7 +19,7 @@ export default function AppHeader({ links = [] }) {
 
       <nav className="hidden items-center gap-5 text-sm text-gray-600 md:flex">
         {links.map((label) => (
-          <a key={label} href="#" className="hover:text-pf-purple-dark">
+          <a key={label} href={destinations[label] ?? "#"} className="hover:text-pf-purple-dark">
             {label}
           </a>
         ))}
