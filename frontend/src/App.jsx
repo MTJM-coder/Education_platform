@@ -8,6 +8,7 @@ import TeacherSignupPage from './pages/TeacherSignupPage';
 import Register from './pages/SignupRoleChoicePage';
 import StudentSignupPage from './pages/StudentSignupPage';
 import Login from './pages/LoginPage';
+import ParentDashBoardPage from './pages/ParentDashBoardPage';
 
 const App = () => {
   return (
@@ -21,6 +22,7 @@ const App = () => {
         <Route path='/register/teacher' element={<TeacherSignupPage/>}/>
         <Route path='/register/student' element={<StudentSignupPage/>}/>
         <Route path='/login' element={<Login/>}/>
+        <Route path='/parent-dashboard' element={<ParentDashBoardPage/>}/>
       </Routes>
     </BrowserRouter>
 
