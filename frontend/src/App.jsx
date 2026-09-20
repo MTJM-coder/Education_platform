@@ -32,6 +32,9 @@ import TeacherProfilePage from './pages/TeacherProfilePage';
 import TeacherStudentsPage from './pages/TeacherStudentsPage';
 import TeacherAssignmentsPage from './pages/TeacherAssignmentsPage';
 import TeacherCalendarPage from './pages/TeacherCalendarPage';
+import TeacherLectureNotesPage from './pages/TeacherLectureNotesPage';
+import TeacherAssessments from './pages/TeacherAssessmentsPage';
+import TeacherReputationPage from './pages/TeacherReputationPage';
 const App = () => {
   return (
     <BrowserRouter>
@@ -73,6 +76,9 @@ const App = () => {
         <Route path='/teacher-students' element={<TeacherStudentsPage/>}/>
         <Route path='/teacher-assignment' element={<TeacherAssignmentsPage/>}/>
         <Route path='/teacher-calendar' element={<TeacherCalendarPage/>}/>
+        <Route path='/teacher-lecture-notes' element={<TeacherLectureNotesPage/>}/>
+        <Route path='/teacher-assessments' element={<TeacherAssessments/>}/>
+        <Route path='/teacher-reputation' element={<TeacherReputationPage/>}/>
 
       </Routes>
     </BrowserRouter>
