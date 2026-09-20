@@ -2,7 +2,7 @@ import React from 'react'
 import LandingPage from './pages/LandingPage'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import  SearchResultsPage  from './pages/SearchResultsPage'
-import TeacherProfilePage from './pages/TeacherProfilePage';
+import TeacherProfilePublicPage from './pages/TeacherProfilePublicPage';
 import ParentSignupPage from './pages/ParentSignupPage'; 
 import TeacherSignupPage from './pages/TeacherSignupPage';
 import Register from './pages/SignupRoleChoicePage';
@@ -28,13 +28,15 @@ import StudentSchedulePage from './pages/StudentSchedulePage';
 import StudentAssessmentsPage from './pages/StudentAssessmentsPage';
 import { StudentAchievementsPage, StudentExamPreparationPage, StudentNotificationsPage, StudentProfilePage, StudentResourcesPage, StudentResultsPage } from './pages/StudentAdditionalPages';
 import TeacherDashboard from './pages/TeacherDashboardPage';
+import TeacherProfilePage from './pages/TeacherProfilePage';
+import TeacherStudentsPage from './pages/TeacherStudentsPage';
 const App = () => {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/search" element={<SearchResultsPage />} />
-        <Route path='/teacher-profile' element={<TeacherProfilePage />} />
+        <Route path='/teacher-public/profile' element={<TeacherProfilePublicPage />} />
         <Route path='/register/parent' element={<ParentSignupPage/>}/>
         <Route path='/register' element={<Register/>}/>
         <Route path='/register/teacher' element={<TeacherSignupPage/>}/>
@@ -65,6 +67,8 @@ const App = () => {
         <Route path='/learning-platform' element={<LearningPlatformPage/>}/>
         <Route path='/parametres' element={<AccountSettingsPage/>}/>
         <Route path='/teacher-dashboard' element={<TeacherDashboard/>}/>
+        <Route path='/teacher-profile' element={<TeacherProfilePage/>}/>
+        <Route path='/teacher-students' element={<TeacherStudentsPage/>}/>
       </Routes>
     </BrowserRouter>
 
