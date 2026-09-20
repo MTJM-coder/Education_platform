@@ -30,6 +30,8 @@ import { StudentAchievementsPage, StudentExamPreparationPage, StudentNotificatio
 import TeacherDashboard from './pages/TeacherDashboardPage';
 import TeacherProfilePage from './pages/TeacherProfilePage';
 import TeacherStudentsPage from './pages/TeacherStudentsPage';
+import TeacherAssignmentsPage from './pages/TeacherAssignmentsPage';
+import TeacherCalendarPage from './pages/TeacherCalendarPage';
 const App = () => {
   return (
     <BrowserRouter>
@@ -69,6 +71,9 @@ const App = () => {
         <Route path='/teacher-dashboard' element={<TeacherDashboard/>}/>
         <Route path='/teacher-profile' element={<TeacherProfilePage/>}/>
         <Route path='/teacher-students' element={<TeacherStudentsPage/>}/>
+        <Route path='/teacher-assignment' element={<TeacherAssignmentsPage/>}/>
+        <Route path='/teacher-calendar' element={<TeacherCalendarPage/>}/>
+
       </Routes>
     </BrowserRouter>
 
