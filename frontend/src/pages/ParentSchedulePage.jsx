@@ -1,0 +1,11 @@
+import { ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
+import AppHeader from "../components/layout/AppHeader";
+
+const sessions = [
+  { time: "16:00", child: "Junior", subject: "Mathematics", teacher: "Mr. John", tone: "bg-pf-purple-light text-pf-purple-dark" },
+  { time: "18:00", child: "Sarah", subject: "English", teacher: "Mrs. Jane", tone: "bg-[#E8F5EE] text-[#236543]" },
+];
+
+export default function ParentSchedulePage() {
+  return <div className="min-h-screen bg-[#FAF9FB] font-sans"><AppHeader /><main className="px-4 py-8 sm:px-8"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-medium text-pf-purple">FAMILY CALENDAR</p><h1 className="mt-1 font-serif text-2xl font-medium text-pf-purple-dark">Schedule</h1><p className="mt-1 text-sm text-gray-600">All lessons for your children, in one calendar.</p></div><div className="flex items-center gap-2"><button aria-label="Previous day" className="rounded-md border border-gray-200 bg-white p-2 text-gray-600"><ChevronLeft className="h-5 w-5" /></button><span className="min-w-36 text-center text-sm font-medium text-pf-purple-dark">September 19</span><button aria-label="Next day" className="rounded-md border border-gray-200 bg-white p-2 text-gray-600"><ChevronRight className="h-5 w-5" /></button></div></div><section className="mt-7 max-w-3xl overflow-hidden rounded-lg border border-gray-200 bg-white"><header className="border-b border-gray-100 px-5 py-4"><h2 className="font-serif text-lg font-medium text-pf-purple-dark">Thursday, September 19</h2></header><div>{sessions.map((session) => <article key={session.time} className="grid grid-cols-[76px_1fr] gap-4 border-b border-gray-100 px-5 py-5 last:border-0"><div className="flex items-start gap-2 text-sm font-semibold text-pf-purple-dark"><Clock3 className="mt-0.5 h-4 w-4 text-pf-purple" />{session.time}</div><div className={`rounded-md p-4 ${session.tone}`}><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">{session.child} · {session.subject}</p><span className="rounded-full bg-white/80 px-2 py-1 text-xs font-medium">Scheduled</span></div><p className="mt-1 text-sm opacity-80">{session.teacher}</p></div></article>)}</div></section></main></div>;
+}

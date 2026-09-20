@@ -1,0 +1,8 @@
+import { TrendingDown, TrendingUp } from "lucide-react";
+import AppHeader from "../components/layout/AppHeader";
+
+const progress = [{ child: "Junior", subject: "Mathematics", scores: ["11/20", "13/20", "16/20"], change: "+5 points", positive: true }, { child: "Sarah", subject: "English", scores: ["15/20", "14/20", "13/20"], change: "-2 points", positive: false }];
+
+export default function ParentProgressPage() {
+  return <div className="min-h-screen bg-[#FAF9FB] font-sans"><AppHeader /><main className="px-4 py-8 sm:px-8"><div><p className="text-xs font-medium text-pf-purple">ACADEMIC FOLLOW-UP</p><h1 className="mt-1 font-serif text-2xl font-medium text-pf-purple-dark">Child Progress</h1><p className="mt-1 text-sm text-gray-600">See where every child is improving and where support is needed.</p></div><div className="mt-7 grid gap-5 xl:grid-cols-2">{progress.map((item) => <article key={item.child} className="rounded-lg border border-gray-200 bg-white p-5"><h2 className="font-serif text-lg font-medium text-pf-purple-dark">{item.child} — {item.subject}</h2><div className="mt-5 grid grid-cols-3 gap-3">{item.scores.map((score, index) => <div key={score} className="border-l-2 border-pf-purple-light pl-3"><p className="text-xs text-gray-500">Term {index + 1}</p><p className="mt-1 text-lg font-medium text-pf-purple-dark">{score}</p></div>)}</div><div className={`mt-6 flex items-center gap-2 rounded-md p-3 text-sm font-medium ${item.positive ? "bg-[#E8F5EE] text-[#236543]" : "bg-[#FFF4E5] text-[#8A5300]"}`}>{item.positive ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />} Progression: {item.change}</div></article>)}</div></main></div>;
+}

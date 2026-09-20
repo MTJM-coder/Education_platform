@@ -37,7 +37,7 @@ export default function ParentDashboardPage() {
     <div className="min-h-screen bg-[#FAF9FB] font-sans">
       <AppHeader links={["Mes enfants", "Paiements", "Litiges"]} />
 
-      <div className="px-2 py-6 pb-12 sm:px-8">
+      <div className="px-2 py-6 pb-12 sm:px-8 lg:ml-64">
         <h1 className="font-serif text-xl font-medium text-pf-purple-dark sm:text-2xl">
           Bonjour, Odile
         </h1>
