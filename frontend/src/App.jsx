@@ -26,7 +26,13 @@ import StudentSubjectPage from './pages/StudentSubjectPage';
 import StudentTeachersPage from './pages/StudentTeachersPage';
 import StudentSchedulePage from './pages/StudentSchedulePage';
 import StudentAssessmentsPage from './pages/StudentAssessmentsPage';
-import { StudentAchievementsPage, StudentExamPreparationPage, StudentNotificationsPage, StudentProfilePage, StudentResourcesPage, StudentResultsPage } from './pages/StudentAdditionalPages';
+import StudentResourcesPage from './pages/StudentResourcesPage';
+import StudentResultsPage from './pages/StudentResultsPage';
+import StudentExamPreparationPage from './pages/StudentExamPreparationPage'
+import StudentAchievementsPage from './pages/StudentAchievementsPage'
+import StudentNotificationsPage from './pages/StudentNotificationsPage'
+import StudentProfilePage from './pages/StudentProfilePage'
+
 import TeacherDashboard from './pages/TeacherDashboardPage';
 import TeacherProfilePage from './pages/TeacherProfilePage';
 import TeacherStudentsPage from './pages/TeacherStudentsPage';
@@ -35,6 +41,9 @@ import TeacherCalendarPage from './pages/TeacherCalendarPage';
 import TeacherLectureNotesPage from './pages/TeacherLectureNotesPage';
 import TeacherAssessments from './pages/TeacherAssessmentsPage';
 import TeacherReputationPage from './pages/TeacherReputationPage';
+import TeacherEarningsPage from './pages/TeacherEarningsPage';
+import TeacherExamPreparationPage from './pages/TeacherExamPreparationPage';
+import TeacherSettingsPage from './pages/TeacherSettingsPage'
 const App = () => {
   return (
     <BrowserRouter>
@@ -72,13 +81,17 @@ const App = () => {
         <Route path='/learning-platform' element={<LearningPlatformPage/>}/>
         <Route path='/parametres' element={<AccountSettingsPage/>}/>
         <Route path='/teacher-dashboard' element={<TeacherDashboard/>}/>
-        <Route path='/teacher-profile' element={<TeacherProfilePage/>}/>
+        <Route path='/teacher-profile-dashboard' element={<TeacherProfilePage/>}/>
         <Route path='/teacher-students' element={<TeacherStudentsPage/>}/>
-        <Route path='/teacher-assignment' element={<TeacherAssignmentsPage/>}/>
+        <Route path='/teacher-assignments' element={<TeacherAssignmentsPage/>}/>
         <Route path='/teacher-calendar' element={<TeacherCalendarPage/>}/>
         <Route path='/teacher-lecture-notes' element={<TeacherLectureNotesPage/>}/>
         <Route path='/teacher-assessments' element={<TeacherAssessments/>}/>
         <Route path='/teacher-reputation' element={<TeacherReputationPage/>}/>
+        <Route path='/teacher-earnings' element={<TeacherEarningsPage/>}/>
+        <Route path='/teacher-exam-preparation' element={<TeacherExamPreparationPage/>}/>
+        <Route path='/teacher-settings' element={<TeacherSettingsPage/>}/>
+        
 
       </Routes>
     </BrowserRouter>

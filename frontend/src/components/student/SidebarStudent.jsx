@@ -17,14 +17,56 @@ import {
 import { useState } from "react";
 
 const navigation = [
-  { label: "Dashboard", icon: Home, href: "/student-dashboard" },
-  { label: "My Learning", icon: BookOpen, href: "/student-learning", children: [{ label: "My Subjects" }, { label: "Courses" }, { label: "Resources", href: "/student-resources" }] },
-  { label: "My Teachers", icon: UsersRound, href: "/student-teachers" },
-  { label: "My Schedule", icon: CalendarDays, href: "/student-schedule" },
-  { label: "Assessments", icon: ClipboardCheck, href: "/student-assessments" },
-  { label: "My Results", icon: BarChart3, href: "/student-results" },
-  { label: "Exam Preparation", icon: Target, href: "/student-exam-preparation" },
-  { label: "Progress & Achievements", icon: Award, href: "/student-achievements" },
+  {
+    label: "Dashboard",
+    icon: Home,
+    href: "/student-dashboard",
+  },
+  {
+    label: "My Learning",
+    icon: BookOpen,
+    href: "/student-learning",
+    children: [
+      {
+        label: "My Subjects",
+        href: "/student-learning",
+      },
+      {
+        label: "Resources",
+        href: "/student-resources",
+      },
+    ],
+  },
+  {
+    label: "My Teachers",
+    icon: UsersRound,
+    href: "/student-teachers",
+  },
+  {
+    label: "My Schedule",
+    icon: CalendarDays,
+    href: "/student-schedule",
+  },
+  {
+    label: "Assessments",
+    icon: ClipboardCheck,
+    href: "/student-assessments",
+  },
+  {
+    label: "My Results",
+    icon: BarChart3,
+    href: "/student-results",
+  },
+  {
+    label: "Exam Preparation",
+    icon: Target,
+    href: "/student-exam-preparation",
+  },
+  {
+    label: "Progress & Achievements",
+    icon: Award,
+    href: "/student-achievements",
+  },
 ];
 
 function NavItem({ item, activeItem }) {

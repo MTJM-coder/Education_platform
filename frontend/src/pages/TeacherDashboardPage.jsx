@@ -9,7 +9,8 @@ import {
   Target,
   TrendingUp,
   UsersRound,
-  Book
+  Book,
+  MapPin
 } from "lucide-react";
 import TeacherSidebar from "../components/teacher/TeacherSidebar";
 
@@ -322,7 +323,7 @@ export default function TeacherDashboardPage() {
                         </p>
 
                         <p className="mt-1 text-xs text-gray-400">
-                          📍 {lesson.location}
+                          <MapPin className="inline mr-4 text-xs"></MapPin> {lesson.location}
                         </p>
                       </div>
                     </div>

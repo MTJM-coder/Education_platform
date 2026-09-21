@@ -1,124 +1,388 @@
 import {
   Award,
-  BarChart3,
-  Bell,
   BookOpen,
   CalendarDays,
+  CheckCircle2,
   ChevronRight,
-  ClipboardCheck,
+  Clock3,
   FileText,
   GraduationCap,
-  Home,
-  Library,
-  Medal,
-  Settings,
   Target,
+  TrendingUp,
   UserRound,
-  UsersRound,
 } from "lucide-react";
+import StudentSidebar from "../components/student/SidebarStudent";
 
-const navigation = [
-  { label: "Dashboard", icon: Home },
-  { label: "My Learning", icon: BookOpen, children: ["My Subjects", "Courses", "Resources"] },
-  { label: "My Teachers", icon: UsersRound },
-  { label: "My Schedule", icon: CalendarDays },
-  { label: "Assessments", icon: ClipboardCheck },
-  { label: "My Results", icon: BarChart3 },
-  { label: "Exam Preparation", icon: Target },
-  { label: "Progress & Achievements", icon: Award },
+const subjects = [
+  {
+    name: "Mathematics",
+    teacher: "Mr. John Doe",
+    average: 78,
+    progress: 82,
+  },
+  {
+    name: "Physics",
+    teacher: "Mrs. Sarah Smith",
+    average: 71,
+    progress: 68,
+  },
+  {
+    name: "Chemistry",
+    teacher: "Mr. David Brown",
+    average: 84,
+    progress: 89,
+  },
 ];
 
-const assessments = [
-  { title: "Algebra quiz", subject: "Mathematics", date: "Tomorrow", tone: "bg-[#FBF3E1] text-[#8A5A00]" },
-  { title: "Essay: My future career", subject: "English", date: "Friday, 20 Sept.", tone: "bg-pf-purple-light text-pf-purple-dark" },
+const upcomingClasses = [
+  {
+    subject: "Mathematics",
+    teacher: "Mr. John Doe",
+    date: "Today",
+    time: "16:00 - 18:00",
+    type: "Home Lesson",
+  },
+  {
+    subject: "Physics",
+    teacher: "Mrs. Sarah Smith",
+    date: "Tomorrow",
+    time: "14:00 - 16:00",
+    type: "Home Lesson",
+  },
 ];
 
-const resources = [
-  { title: "Solving quadratic equations", detail: "Mathematics · PDF lesson", icon: FileText },
-  { title: "Revision: Cell structure", detail: "Biology · Video", icon: Library },
+const recentResults = [
+  {
+    subject: "Mathematics",
+    assessment: "Algebra Assessment",
+    score: 82,
+    grade: "A",
+    date: "Sep 18, 2026",
+  },
+  {
+    subject: "Physics",
+    assessment: "Mechanics Test",
+    score: 74,
+    grade: "B+",
+    date: "Sep 15, 2026",
+  },
+  {
+    subject: "Chemistry",
+    assessment: "Organic Chemistry",
+    score: 88,
+    grade: "A",
+    date: "Sep 12, 2026",
+  },
 ];
 
-function NavItem({ item }) {
-  const Icon = item.icon;
-  const active = item.label === "Dashboard";
-
+export default function StudentDashboard() {
   return (
-    <div>
-      <button
-        type="button"
-        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition ${
-          active
-            ? "bg-pf-purple text-white shadow-sm"
-            : "text-[#5D5A65] hover:bg-pf-purple-light hover:text-pf-purple-dark"
-        }`}
-      >
-        <Icon className="h-[18px] w-[18px] shrink-0" />
-        <span className="font-medium">{item.label}</span>
-      </button>
-      {item.children && (
-        <div className="ml-9 mt-1 space-y-1 border-l border-gray-200 pl-3">
-          {item.children.map((child) => (
-            <button key={child} type="button" className="block py-1 text-left text-xs text-gray-500 hover:text-pf-purple">
-              {child}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function StudentDashboardPage() {
-  return (
-    <div className="min-h-screen bg-[#FAF9FB] font-sans text-[#302C38]">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r border-gray-100 bg-white px-4 py-6 lg:flex lg:flex-col">
-        <a href="/" className="flex items-center gap-2.5 px-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-pf-purple text-white"><GraduationCap className="h-5 w-5" /></div>
-          <span className="font-serif text-sm font-medium text-pf-purple-dark">The Pathfinder</span>
-        </a>
-        <p className="mt-8 px-2 text-[10px] font-semibold tracking-[0.16em] text-gray-400">STUDENT PORTAL</p>
-        <nav className="mt-3 space-y-1.5">
-          {navigation.map((item) => <NavItem key={item.label} item={item} />)}
-        </nav>
-        <div className="mt-auto space-y-1 border-t border-gray-100 pt-4">
-          <button type="button" className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#5D5A65] hover:bg-pf-purple-light"><Bell className="h-[18px] w-[18px]" /> Notifications <span className="ml-auto rounded-full bg-pf-gold px-1.5 py-0.5 text-[10px] font-semibold text-white">3</span></button>
-          <button type="button" className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#5D5A65] hover:bg-pf-purple-light"><UserRound className="h-[18px] w-[18px]" /> My Profile</button>
-          <button type="button" className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#5D5A65] hover:bg-pf-purple-light"><Settings className="h-[18px] w-[18px]" /> Settings</button>
-        </div>
-      </aside>
+    <div className="min-h-screen bg-[#FAFAFC]">
+      <StudentSidebar activeItem="Dashboard" />
 
       <main className="lg:ml-64">
-        <header className="flex h-16 items-center justify-between border-b border-gray-100 bg-white px-5 sm:px-8">
-          <div className="flex items-center gap-2 lg:hidden"><GraduationCap className="h-6 w-6 text-pf-purple" /><span className="font-serif text-sm text-pf-purple-dark">Student Portal</span></div>
-          <p className="hidden text-sm text-gray-500 lg:block">Tuesday, 17 September 2024</p>
-          <div className="flex items-center gap-3">
-            <button type="button" className="relative rounded-full p-2 text-gray-500 hover:bg-gray-50"><Bell className="h-5 w-5" /><span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-pf-gold" /></button>
-            <div className="flex items-center gap-2 border-l border-gray-100 pl-3"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-pf-purple-light text-xs font-semibold text-pf-purple">JM</div><div className="hidden sm:block"><p className="text-xs font-medium text-pf-purple-dark">Jean M.</p><p className="text-[10px] text-gray-400">Form 4</p></div></div>
+        {/* Header */}
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-gray-100 bg-white/95 px-6 backdrop-blur lg:px-8">
+          <div className="ml-12 lg:ml-0">
+            <p className="text-xs text-gray-400">
+              Student Portal
+            </p>
+
+            <h1 className="text-lg font-semibold text-pf-purple-dark">
+              Dashboard
+            </h1>
+          </div>
+
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-pf-purple-light text-pf-purple">
+            <UserRound className="h-4 w-4" />
           </div>
         </header>
 
-        <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8">
-          
-
-          <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Metric icon={BookOpen} label="Active courses" value="3" note="This term" color="text-pf-purple" />
-            <Metric icon={ClipboardCheck} label="Assessments" value="2" note="Coming up" color="text-[#B47B00]" />
-            <Metric icon={BarChart3} label="Average" value="14.5 / 20" note="+1.2 this month" color="text-pf-green" />
-            <Metric icon={Medal} label="Class rank" value="#3" note="Most progressive" color="text-pf-purple" />
+        <div className="p-6 lg:p-8">
+          {/* Welcome */}
+          <section className="mb-7">
+            <p className="text-sm text-gray-400">
+              Sunday, September 20, 2026
+            </p>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">
+              Here is an overview of your learning progress and
+              upcoming activities.
+            </p>
           </section>
 
-          <section className="mt-6 grid gap-5 xl:grid-cols-[1.5fr_0.9fr]">
-            <div className="rounded-2xl bg-pf-purple p-6 text-white sm:p-7">
-              <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-medium tracking-wide text-purple-200">NEXT LESSON</p><h2 className="mt-2 font-serif text-2xl">Mathematics</h2><p className="mt-1 text-sm text-purple-100">Today · 16:00 – 17:30</p></div><div className="rounded-lg bg-white/15 p-3"><CalendarDays className="h-6 w-6" /></div></div>
-              <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-white/15 pt-5"><p className="text-sm text-purple-100">Teacher: <span className="font-medium text-white">Mr. Xavier Ndzi</span></p><button type="button" className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-pf-purple-dark hover:bg-purple-50">View lesson <ChevronRight className="inline h-4 w-4" /></button></div>
+          {/* Main statistics */}
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              icon={TrendingUp}
+              label="Overall Average"
+              value="78%"
+              description="+4% this term"
+            />
+
+            <StatCard
+              icon={BookOpen}
+              label="Subjects"
+              value="3"
+              description="Currently studying"
+            />
+
+            <StatCard
+              icon={CalendarDays}
+              label="Upcoming Classes"
+              value="2"
+              description="This week"
+            />
+
+            <StatCard
+              icon={Target}
+              label="Attendance"
+              value="94%"
+              description="Excellent attendance"
+            />
+          </section>
+
+          {/* Progress + next class */}
+          <section className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+            {/* Overall progress */}
+            <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold text-pf-purple-dark">
+                    My Learning Progress
+                  </h3>
+
+                  <p className="mt-1 text-xs text-gray-400">
+                    Your current performance by subject
+                  </p>
+                </div>
+
+                <TrendingUp className="h-5 w-5 text-pf-purple" />
+              </div>
+
+              <div className="mt-6 space-y-5">
+                {subjects.map((subject) => (
+                  <SubjectProgress
+                    key={subject.name}
+                    subject={subject}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-white p-5"><div className="flex items-center justify-between"><div><p className="text-xs font-medium text-pf-purple">OVERALL PROGRESS</p><p className="mt-1 font-serif text-2xl text-pf-purple-dark">72%</p></div><div className="flex h-12 w-12 items-center justify-center rounded-full border-4 border-pf-purple-light text-xs font-bold text-pf-purple">72%</div></div><div className="mt-5 h-2 overflow-hidden rounded-full bg-gray-100"><div className="h-full w-[72%] rounded-full bg-pf-purple" /></div><p className="mt-3 text-xs leading-relaxed text-gray-500">You are 8% closer to your end-of-term goal. Keep your momentum going!</p></div>
+
+            {/* Next class */}
+            <div className="rounded-xl bg-pf-purple p-6 text-white shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-white/60">
+                    Next Class
+                  </p>
+
+                  <h3 className="mt-2 text-xl font-semibold">
+                    {upcomingClasses[0].subject}
+                  </h3>
+                </div>
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10">
+                  <CalendarDays className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-3">
+                <InfoRow
+                  icon={UserRound}
+                  text={upcomingClasses[0].teacher}
+                />
+
+                <InfoRow
+                  icon={CalendarDays}
+                  text={upcomingClasses[0].date}
+                />
+
+                <InfoRow
+                  icon={Clock3}
+                  text={upcomingClasses[0].time}
+                />
+              </div>
+
+              <button
+                type="button"
+                className="mt-6 w-full rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-pf-purple hover:bg-gray-50"
+              >
+                View Class Details
+              </button>
+            </div>
           </section>
 
-          <section className="mt-6 grid gap-5 lg:grid-cols-2 xl:grid-cols-[1.1fr_1.1fr_0.8fr]">
-            <Panel title="Upcoming assessments" action="View all"><div className="space-y-3">{assessments.map((item) => <div key={item.title} className="flex items-center gap-3 rounded-xl bg-[#FAF9FB] p-3"><div className="rounded-lg bg-white p-2 text-pf-purple shadow-sm"><ClipboardCheck className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-pf-purple-dark">{item.title}</p><p className="mt-0.5 text-xs text-gray-500">{item.subject}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-medium ${item.tone}`}>{item.date}</span></div>)}</div></Panel>
-            <Panel title="Recently added" action="All resources"><div className="space-y-3">{resources.map((item) => { const Icon = item.icon; return <button key={item.title} type="button" className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-[#FAF9FB]"><div className="rounded-lg bg-pf-purple-light p-2.5"><Icon className="h-4 w-4 text-pf-purple" /></div><div className="min-w-0"><p className="truncate text-sm font-medium text-pf-purple-dark">{item.title}</p><p className="mt-0.5 text-xs text-gray-500">{item.detail}</p></div></button>})}</div></Panel>
-            <div className="rounded-2xl border border-[#E6DDAE] bg-[#FFFBEF] p-5"><Target className="h-5 w-5 text-[#A16C00]" /><p className="mt-3 text-xs font-semibold tracking-wide text-[#A16C00]">WEEKLY GOAL</p><h2 className="mt-1 font-serif text-lg text-pf-purple-dark">Complete 2 revision sessions</h2><p className="mt-2 text-sm text-gray-600">You have completed <b>1 of 2</b> sessions this week.</p><div className="mt-4 h-2 overflow-hidden rounded-full bg-[#F3E7BE]"><div className="h-full w-1/2 rounded-full bg-pf-gold" /></div><button type="button" className="mt-4 text-sm font-semibold text-pf-purple hover:underline">Continue revision →</button></div>
+          {/* Upcoming classes */}
+          <section className="mt-6 rounded-xl border border-gray-100 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+              <div>
+                <h3 className="font-semibold text-pf-purple-dark">
+                  Upcoming Classes
+                </h3>
+
+                <p className="mt-1 text-xs text-gray-400">
+                  Your next scheduled lessons
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="flex items-center gap-1 text-xs font-medium text-pf-purple"
+              >
+                View Calendar
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="divide-y divide-gray-100">
+              {upcomingClasses.map((item, index) => (
+                <ClassRow
+                  key={index}
+                  item={item}
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* Recent results */}
+          <section className="mt-6 rounded-xl border border-gray-100 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+              <div>
+                <h3 className="font-semibold text-pf-purple-dark">
+                  Recent Results
+                </h3>
+
+                <p className="mt-1 text-xs text-gray-400">
+                  Your latest academic assessments
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="flex items-center gap-1 text-xs font-medium text-pf-purple"
+              >
+                View All Results
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[650px]">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50/60">
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                      Subject
+                    </th>
+
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                      Assessment
+                    </th>
+
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                      Score
+                    </th>
+
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                      Grade
+                    </th>
+
+                    <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-gray-100">
+                  {recentResults.map((result) => (
+                    <ResultRow
+                      key={result.assessment}
+                      result={result}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* Learning resources + award */}
+          <section className="mt-6 grid gap-6 lg:grid-cols-2">
+            {/* Resources */}
+            <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pf-purple-light text-pf-purple">
+                  <FileText className="h-5 w-5" />
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-pf-purple-dark">
+                    Learning Resources
+                  </h3>
+
+                  <p className="mt-1 text-xs text-gray-400">
+                    Continue learning outside your lessons
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <ResourceItem
+                  icon={FileText}
+                  title="Past Papers"
+                  description="Practice with previous exams"
+                />
+
+                <ResourceItem
+                  icon={BookOpen}
+                  title="Lecture Notes"
+                  description="Review your course materials"
+                />
+              </div>
+            </div>
+
+            {/* Most progressive student */}
+            <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-100">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                    Monthly Award
+                  </p>
+
+                  <h3 className="mt-2 font-semibold text-pf-purple-dark">
+                    Most Progressive Student
+                  </h3>
+                </div>
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-500">
+                  <Award className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-center gap-4 rounded-lg bg-gray-50 p-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pf-purple-light text-pf-purple">
+                  <GraduationCap className="h-6 w-6" />
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold text-pf-purple-dark">
+                    You are currently ranked
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-400">
+                    Keep improving to become the Most Progressive
+                    Student of the Month.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="mt-4 flex items-center gap-1 text-xs font-medium text-pf-purple"
+              >
+                View Ranking
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </section>
         </div>
       </main>
@@ -126,10 +390,203 @@ export default function StudentDashboardPage() {
   );
 }
 
-function Metric({ icon: Icon, label, value, note, color }) {
-  return <div className="rounded-xl border border-gray-200 bg-white p-4"><div className="flex items-start justify-between"><p className="text-xs text-gray-500">{label}</p><Icon className={`h-4 w-4 ${color}`} /></div><p className="mt-2 text-xl font-semibold text-pf-purple-dark">{value}</p><p className="mt-1 text-xs text-gray-400">{note}</p></div>;
+/* ========================================================= */
+/* STAT CARD                                                   */
+/* ========================================================= */
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  description,
+}) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+            {label}
+          </p>
+
+          <p className="mt-2 text-2xl font-bold text-pf-purple-dark">
+            {value}
+          </p>
+
+          <p className="mt-1 text-xs text-gray-400">
+            {description}
+          </p>
+        </div>
+
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-pf-purple-light text-pf-purple">
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function Panel({ title, action, children }) {
-  return <section className="rounded-2xl border border-gray-200 bg-white p-5"><div className="mb-4 flex items-center justify-between"><h2 className="font-serif text-lg font-medium text-pf-purple-dark">{title}</h2><button type="button" className="text-xs font-medium text-pf-purple hover:underline">{action}</button></div>{children}</section>;
+/* ========================================================= */
+/* SUBJECT PROGRESS                                            */
+/* ========================================================= */
+
+function SubjectProgress({ subject }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-700">
+            {subject.name}
+          </p>
+
+          <p className="mt-1 text-xs text-gray-400">
+            {subject.teacher}
+          </p>
+        </div>
+
+        <div className="text-right">
+          <p className="text-sm font-semibold text-pf-purple-dark">
+            {subject.average}%
+          </p>
+
+          <p className="mt-1 text-[11px] text-gray-400">
+            Average
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+        <div
+          className="h-full rounded-full bg-pf-purple"
+          style={{
+            width: `${subject.progress}%`,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ========================================================= */
+/* INFO ROW                                                    */
+/* ========================================================= */
+
+function InfoRow({ icon: Icon, text }) {
+  return (
+    <div className="flex items-center gap-3 text-sm text-white/80">
+      <Icon className="h-4 w-4 text-white/60" />
+      <span>{text}</span>
+    </div>
+  );
+}
+
+/* ========================================================= */
+/* CLASS ROW                                                   */
+/* ========================================================= */
+
+function ClassRow({ item }) {
+  return (
+    <div className="flex flex-col gap-4 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pf-purple-light text-pf-purple">
+          <BookOpen className="h-4 w-4" />
+        </div>
+
+        <div>
+          <p className="text-sm font-medium text-pf-purple-dark">
+            {item.subject}
+          </p>
+
+          <p className="mt-1 text-xs text-gray-400">
+            {item.teacher} · {item.type}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-5">
+        <div>
+          <p className="text-xs text-gray-400">
+            Date
+          </p>
+
+          <p className="mt-1 text-sm font-medium text-gray-600">
+            {item.date}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-xs text-gray-400">
+            Time
+          </p>
+
+          <p className="mt-1 flex items-center gap-1 text-sm font-medium text-gray-600">
+            <Clock3 className="h-3.5 w-3.5" />
+            {item.time}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ========================================================= */
+/* RESULT ROW                                                  */
+/* ========================================================= */
+
+function ResultRow({ result }) {
+  return (
+    <tr className="transition hover:bg-gray-50/60">
+      <td className="px-6 py-4 text-sm font-medium text-pf-purple-dark">
+        {result.subject}
+      </td>
+
+      <td className="px-6 py-4 text-sm text-gray-600">
+        {result.assessment}
+      </td>
+
+      <td className="px-6 py-4 text-sm font-semibold text-gray-700">
+        {result.score}%
+      </td>
+
+      <td className="px-6 py-4">
+        <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
+          {result.grade}
+        </span>
+      </td>
+
+      <td className="px-6 py-4 text-xs text-gray-400">
+        {result.date}
+      </td>
+    </tr>
+  );
+}
+
+/* ========================================================= */
+/* RESOURCE ITEM                                               */
+/* ========================================================= */
+
+function ResourceItem({
+  icon: Icon,
+  title,
+  description,
+}) {
+  return (
+    <button
+      type="button"
+      className="flex items-center gap-3 rounded-lg border border-gray-100 p-3 text-left transition hover:border-pf-purple/20 hover:bg-pf-purple-light"
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-pf-purple">
+        <Icon className="h-4 w-4" />
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold text-pf-purple-dark">
+          {title}
+        </p>
+
+        <p className="mt-1 text-[11px] text-gray-400">
+          {description}
+        </p>
+      </div>
+    </button>
+  );
 }
