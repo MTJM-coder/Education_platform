@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppHeader from "../components/layout/AppHeader";
 import { StatCard, Pill } from "../components/ui/StatusUi";
 import ChildCard from "../components/parent/ChildCard";
@@ -31,12 +31,34 @@ const LEVELS = [
 ];
 
 export default function ParentDashboardPage() {
+  const [showSuccess, setShowSuccess] = useState(false)
   const [showForm, setShowForm] = useState(false);
-
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("registered") === "true") {
+      setShowSuccess(true)
+      window.history.replaceState({}, "", "/parent-dashboard")
+      setTimeout(() => {
+        setShowSuccess(false)
+      }, 6000);
+    }
+  }, [])
   return (
     <div className="min-h-screen bg-[#FAF9FB] font-sans">
       <AppHeader links={["Mes enfants", "Paiements", "Litiges"]} />
+      {showSuccess && (
+        <div className="mx-auto max-w-7xl px-6 pt-6 lg:ml-64">
+          <div className="rounded-xl border border-green-200 bg-green-50 px-5 py-4">
+            <h2 className="font-medium text-green-800">
+              Compte créé avec succès 🎉
+            </h2>
 
+            <p className="mt-1 text-sm text-green-700">
+              Votre compte parent a bien été créé. 
+            </p>
+          </div>
+        </div>
+      )}
       <div className="px-2 py-6 pb-12 sm:px-8 lg:ml-64">
         <h1 className="font-serif text-xl font-medium text-pf-purple-dark sm:text-2xl">
           Bonjour, Odile
@@ -98,11 +120,10 @@ export default function ParentDashboardPage() {
               {mockUpcomingSessions.map((session, i) => (
                 <div
                   key={session.id}
-                  className={`flex items-center justify-between ${
-                    i < mockUpcomingSessions.length - 1
+                  className={`flex items-center justify-between ${i < mockUpcomingSessions.length - 1
                       ? "mb-2.5 border-b border-gray-100 pb-2.5"
                       : ""
-                  }`}
+                    }`}
                 >
                   <div>
                     <p className="text-[13px] text-pf-purple-dark">

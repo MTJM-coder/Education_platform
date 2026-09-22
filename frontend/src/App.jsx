@@ -8,7 +8,7 @@ import TeacherSignupPage from './pages/TeacherSignupPage';
 import Register from './pages/SignupRoleChoicePage';
 import StudentSignupPage from './pages/StudentSignupPage';
 import Login from './pages/LoginPage';
-import ParentDashBoardPage from './pages/ParentDashBoardPage';
+import ParentDashBoardPage from './pages/ParentDashboardPage';
 import SuiviDemandePage from './pages/SuiviDemandePage';
 import AssignmentDetailPage from './pages/AssignmentWorkspacePage';
 import PaymentsPage from './pages/PaymentsPage';
@@ -98,7 +98,7 @@ const App = () => {
         <Route path='/learning-platform' element={<LearningPlatformPage />} />
         <Route path='/parametres' element={<AccountSettingsPage />} />
         <Route path='/teacher-dashboard' element={<TeacherDashboard />} />
-        <Route path='/teacher-profile-dashboard' element={<TeacherProfilePage />} />
+        <Route path='/teacher-profile' element={<TeacherProfilePage />} />
         <Route path='/teacher-students' element={<TeacherStudentsPage />} />
         <Route path='/teacher-assignments' element={<TeacherAssignmentsPage />} />
         <Route path='/teacher-calendar' element={<TeacherCalendarPage />} />

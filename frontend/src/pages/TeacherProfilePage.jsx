@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   BadgeCheck,
   BookOpen,
@@ -60,11 +61,31 @@ const documents = [
 ];
 
 export default function TeacherProfilePage() {
+  const [showSuccess, setShowSuccess] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("registered") === "true") {
+      setShowSuccess(true);
+
+      // On retire le paramètre de l'URL
+      window.history.replaceState({}, "", "/teacher-profile");
+
+      // Facultatif : faire disparaître le message après quelques secondes
+       setTimeout(() => {
+        setShowSuccess(false);
+      }, 6000);
+
+      return 
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#FAFAFC]">
       <TeacherSidebar activeItem="My Profile" />
 
       <main className="lg:ml-64">
+
         {/* Header */}
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-gray-100 bg-white/95 px-6 backdrop-blur lg:px-8">
           <div className="ml-12 lg:ml-0">
@@ -83,8 +104,21 @@ export default function TeacherProfilePage() {
             </span>
           </div>
         </header>
+        {showSuccess && (
+          <div className="mx-auto max-w-7xl px-6 pt-6">
+            <div className="rounded-xl border border-green-200 bg-green-50 px-5 py-4">
+              <h2 className="font-medium text-green-800">
+                Compte créé avec succès 🎉
+              </h2>
 
+              <p className="mt-1 text-sm text-green-700">
+               Votre compte enseignant a bien été créé. Votre profil est actuellement en attente de validation. Veuillez compléter les documents requis afin de finaliser votre profil.
+              </p>
+            </div>
+          </div>
+        )}
         <div className="p-6 lg:p-8">
+
           {/* Profile header */}
           <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -268,11 +302,10 @@ export default function TeacherProfilePage() {
                   </div>
 
                   <span
-                    className={`w-fit rounded-full px-3 py-1.5 text-xs font-medium ${
-                      subject.status === "Validated"
-                        ? "bg-green-50 text-green-700"
-                        : "bg-amber-50 text-amber-700"
-                    }`}
+                    className={`w-fit rounded-full px-3 py-1.5 text-xs font-medium ${subject.status === "Validated"
+                      ? "bg-green-50 text-green-700"
+                      : "bg-amber-50 text-amber-700"
+                      }`}
                   >
                     {subject.status}
                   </span>

@@ -4,6 +4,7 @@ import SelectField from "../components/ui/SelectField";
 import FileField from "../components/ui/FileField";
 import AuthLayout from "../components/Layout/AuthLayout";
 import authPanels from "../content/authPanels";
+import { apiFetch } from "../lib/apiClient";
 
 const initialForm = {
     firstName: "",
@@ -32,41 +33,100 @@ export default function TeacherSignupPage() {
         setErrors({});
 
         if (form.password !== form.passwordConfirmation) {
-            setErrors({ passwordConfirmation: "Les mots de passe ne correspondent pas." });
+            setErrors({
+                passwordConfirmation:
+                    "Les mots de passe ne correspondent pas.",
+            });
             return;
         }
+
         if (!form.idCard) {
-            setErrors({ idCard: "La pièce d'identité est obligatoire." });
+            setErrors({
+                idCard: "La pièce d'identité est obligatoire.",
+            });
             return;
         }
+
         if (!form.acceptedTerms) {
-            setErrors({ acceptedTerms: "Vous devez accepter les conditions." });
+            setErrors({
+                acceptedTerms:
+                    "Vous devez accepter les conditions.",
+            });
             return;
         }
 
         setSubmitting(true);
+
         try {
-            // TODO: POST /api/auth/register/teacher
-            // await fetch("/api/auth/register/teacher", {
-            //   method: "POST",
-            //   headers: { "Content-Type": "application/json" },
-            //   body: JSON.stringify({
-            //     first_name: form.firstName,
-            //     last_name: form.lastName,
-            //     phone: form.phone,
-            //     email: form.email,
-            //     section: form.section,
-            //     location: form.location,
-            //     id_card: form.idCard,
-            //     password: form.password,
-            //     password_confirmation: form.passwordConfirmation,
-            //   }),
-            // });
+            const formData = new FormData();
+
+            formData.append("first_name", form.firstName);
+            formData.append("last_name", form.lastName);
+            formData.append("phone", form.phone);
+            formData.append("email", form.email);
+            formData.append("section", form.section);
+            formData.append("location", form.location);
+            formData.append("password", form.password);
+            formData.append(
+                "password_confirmation",
+                form.passwordConfirmation
+            );
+
+            // IMPORTANT : le fichier est ajouté directement
+            formData.append("id_card", form.idCard);
+            console.log(form)
+            console.log(formData)
+            await apiFetch("/auth/register/teacher", {
+                method: "POST",
+                body: formData,
+            });
+
+            // Succès
+            setForm(initialForm);
+            // rediriger vers la page de connexion
+            window.location.href = "/teacher-profile?registered=true";
+        } catch (error) {
+            console.error("Erreur inscription enseignant :", error);
+
+            // Erreurs Laravel 422
+            if (error.status === 422) {
+                const validationErrors = error.body?.errors || {};
+
+                const formattedErrors = {};
+
+                Object.entries(validationErrors).forEach(
+                    ([field, messages]) => {
+                        formattedErrors[field] = Array.isArray(messages)
+                            ? messages[0]
+                            : messages;
+                    }
+                );
+
+                setErrors(formattedErrors);
+
+                // Si Laravel renvoie seulement "message"
+                if (
+                    Object.keys(formattedErrors).length === 0 &&
+                    error.body?.message
+                ) {
+                    setErrors({
+                        general: error.body.message,
+                    });
+                }
+
+                return;
+            }
+
+            // Autres erreurs
+            setErrors({
+                general:
+                    error.message ||
+                    "Une erreur est survenue. Veuillez réessayer.",
+            });
         } finally {
             setSubmitting(false);
         }
     }
-
     return (
         <AuthLayout {...authPanels.teacher} maxWidth="440px">
             <p className="mb-1.5 font-serif text-xl font-medium text-pf-purple-dark">
@@ -83,9 +143,13 @@ export default function TeacherSignupPage() {
                 </a>
             </p>
 
-            <form
-                onSubmit={handleSubmit} >
-                
+            <form onSubmit={handleSubmit} >
+                {errors.general && (
+                    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                        {errors.general}
+                    </div>
+                )}
+
                 <p className="mb-5 text-xs text-gray-600">
                     Seule votre pièce d'identité est nécessaire pour commencer — vous
                     ajouterez CV, diplômes et matières depuis votre profil ensuite.
@@ -100,6 +164,7 @@ export default function TeacherSignupPage() {
                             onChange={(e) => updateField("firstName", e.target.value)}
                             required
                         />
+
                         <FormField
                             label="Nom"
                             placeholder="Fokou"
@@ -147,6 +212,11 @@ export default function TeacherSignupPage() {
                             onChange={(e) => updateField("location", e.target.value)}
                             required
                         />
+                        {errors.email && (
+                            <p className="mt-1 text-[11px] text-red-600">
+                                {errors.email}
+                            </p>
+                        )}
                     </div>
 
                     <div>

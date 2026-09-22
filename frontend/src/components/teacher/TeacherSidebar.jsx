@@ -25,7 +25,7 @@ const navigation = [
   {
     label: "My Profile",
     icon: UserRound,
-    href: "/teacher-profile-dashboard",
+    href: "/teacher-profile",
   },
   {
     label: "My Students",

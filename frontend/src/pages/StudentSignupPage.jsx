@@ -3,6 +3,7 @@ import AuthLayout from "../components/Layout/AuthLayout";
 import FormField from "../components/ui/FormField";
 import SelectField from "../components/ui/SelectField";
 import authPanels from "../content/authPanels";
+import { apiFetch } from "../lib/apiClient";
 
 // TODO: remplacer par GET /levels (les classes viennent avec, imbriquees)
 const LEVELS = [
@@ -64,25 +65,50 @@ export default function StudentSignupPage() {
     setSubmitting(true);
     try {
       // TODO: POST /api/auth/register/teacher
-      // await fetch("/api/auth/register/teacher", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     first_name: form.firstName,
-      //     last_name: form.lastName,
-      //     phone: form.phone,
-      //     email: form.email,
-      //     section: form.section,
-      //     level_id: form.levelId,
-      //     class_id: form.classId,
-      //     school_name: form.schoolName,
-      //     location: form.location,
-      //     password: form.password,
-      //     password_confirmation: form.passwordConfirmation,
-      //   }),
-      // });
+      await apiFetch("/auth/register/student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          first_name: form.firstName,
+          last_name: form.lastName,
+          phone: form.phone,
+          email: form.email,
+          section: form.section,
+          level_id: form.levelId,
+          class_id: form.classId,
+          school_name: form.schoolName,
+          location: form.location,
+          password: form.password,
+          password_confirmation: form.passwordConfirmation,
+        }),
+      });
+      setForm(initialForm);
+      window.location.href = "/student-dashboard?registered=true"
+    } catch (error) {
+      console.error("Erreur survenue lors de l'inscription :", error);
+      // Erreurs de validation Laravel 
+
+      if (error.status === 422) {
+        const validationErrors = error.body?.errors || {};
+        const formattedErrors = {};
+        Object.entries(validationErrors).forEach(([field, messages]) => {
+          formattedErrors[field] = Array.isArray(messages) ? messages[0] : messages;
+        });
+        setErrors(formattedErrors);
+        // Si Laravel renvoie uniquement un message 
+        if (Object.keys(formattedErrors).length === 0 && error.body?.message) {
+          setErrors({
+            general: error.body.message,
+
+          });
+        }
+        return;
+      } setErrors({
+        general: error.message || "Une erreur est survenue. Veuillez réessayer.",
+      });
     } finally {
       setSubmitting(false);
+
     }
   }
 
@@ -91,7 +117,7 @@ export default function StudentSignupPage() {
     // pas pour 10 champs dont 2 selects dependants. Le vrai probleme n'etait pas
     // l'agencement des champs mais le conteneur trop etroit pour ce contenu.
     <AuthLayout {...authPanels.teacher} maxWidth="440px">
-     <p className="mb-1.5 font-serif text-xl font-medium text-pf-purple-dark">
+      <p className="mb-1.5 font-serif text-xl font-medium text-pf-purple-dark">
         Créer votre compte enseignant
       </p>
       <p className="mb-2 text-[13px] text-gray-600">
@@ -103,7 +129,7 @@ export default function StudentSignupPage() {
         <a href="/register" className="underline">
           changer
         </a>
-      </p> 
+      </p>
 
       <form onSubmit={handleSubmit}>
         <div className="flex flex-col gap-3.5">
@@ -132,6 +158,11 @@ export default function StudentSignupPage() {
               onChange={(e) => updateField("phone", e.target.value)}
               required
             />
+            {errors.phone && (
+              <p className="mt-1 text-[11px] text-red-600">
+                {errors.phone}
+              </p>
+            )}
             <FormField
               label="Email"
               type="email"
@@ -140,6 +171,11 @@ export default function StudentSignupPage() {
               onChange={(e) => updateField("email", e.target.value)}
               required
             />
+            {errors.phone && (
+              <p className="mt-1 text-[11px] text-red-600">
+                {errors.email}
+              </p>
+            )}
           </div>
 
           {/* Section thematique "Scolarite" — separateur leger plutot qu'un
@@ -161,6 +197,11 @@ export default function StudentSignupPage() {
               <option value="english">Anglais</option>
               <option value="french">Français</option>
             </SelectField>
+            {errors.phone && (
+              <p className="mt-1 text-[11px] text-red-600">
+                {errors.section}
+              </p>
+            )}
 
             <FormField
               label="École (facultatif)"
@@ -203,6 +244,11 @@ export default function StudentSignupPage() {
                 </option>
               ))}
             </SelectField>
+            {errors.phone && (
+              <p className="mt-1 text-[11px] text-red-600">
+                {errors.classe}
+              </p>
+            )}
           </div>
 
           <FormField

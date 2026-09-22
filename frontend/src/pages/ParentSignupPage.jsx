@@ -2,6 +2,7 @@ import { useState } from "react";
 import FormField from "../components/ui/FormField";
 import AuthLayout from "../components/Layout/AuthLayout";
 import authPanels from '../content/authPanels';
+import { apiFetch } from "../lib/apiClient";
 
 const initialForm = {
     firstName: "",
@@ -37,25 +38,50 @@ export default function ParentSignupPage() {
         }
 
         setSubmitting(true);
-        setSubmitting(true);
         try {
-            // TODO: POST /api/auth/register/teacher
-            // await fetch("/api/auth/register/teacher", {
-            //   method: "POST",
-            //   headers: { "Content-Type": "application/json" },
-            //   body: JSON.stringify({
-            //     first_name: form.firstName,
-            //     last_name: form.lastName,
-            //     phone: form.phone,
-            //     email: form.email,
-            //     address: form.address,
-           //     location: form.location,
-            //     password: form.password,
-            //     password_confirmation: form.passwordConfirmation,
-            //   }),
-            // });
+            await apiFetch("/auth/register/parent", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", },
+                body: JSON.stringify(
+                    {
+                        first_name: form.firstName,
+                        last_name: form.lastName,
+                        phone: form.phone,
+                        email: form.email,
+                        address: form.address,
+                        password: form.password,
+                        password_confirmation: form.passwordConfirmation,
+                    }),
+            });
+            // Inscription réussie 
+            setForm(initialForm);
+            window.location.href = "/parent-dashboard?registered=true";
+        }
+        catch (error) {
+            console.error("Erreur survenue lors de l'inscription :", error);
+            // Erreurs de validation Laravel 
+
+            if (error.status === 422) {
+                const validationErrors = error.body?.errors || {};
+                const formattedErrors = {};
+                Object.entries(validationErrors).forEach(([field, messages]) => {
+                    formattedErrors[field] = Array.isArray(messages) ? messages[0] : messages;
+                });
+                setErrors(formattedErrors);
+                // Si Laravel renvoie uniquement un message 
+                if (Object.keys(formattedErrors).length === 0 && error.body?.message) {
+                    setErrors({
+                        general: error.body.message,
+
+                    });
+                }
+                return;
+            } setErrors({
+                general: error.message || "Une erreur est survenue. Veuillez réessayer.",
+            });
         } finally {
             setSubmitting(false);
+
         }
     }
 
@@ -76,7 +102,7 @@ export default function ParentSignupPage() {
             </p>
             <form
                 onSubmit={handleSubmit}>
-               
+
                 <div className="flex flex-col gap-3.5">
                     <div className="flex gap-2.5">
                         <FormField
@@ -102,6 +128,11 @@ export default function ParentSignupPage() {
                         onChange={(e) => updateField("phone", e.target.value)}
                         required
                     />
+                    {errors.phone && (
+                        <p className="mt-1 text-[11px] text-red-600">
+                            {errors.phone}
+                        </p>
+                    )}
 
                     <FormField
                         label="Email"
@@ -111,6 +142,11 @@ export default function ParentSignupPage() {
                         onChange={(e) => updateField("email", e.target.value)}
                         required
                     />
+                    {errors.email && (
+                        <p className="mt-1 text-[11px] text-red-600">
+                            {errors.email}
+                        </p>
+                    )}
 
                     <FormField
                         label="Adresse"
@@ -118,6 +154,11 @@ export default function ParentSignupPage() {
                         value={form.address}
                         onChange={(e) => updateField("address", e.target.value)}
                     />
+                    {errors.email && (
+                        <p className="mt-1 text-[11px] text-red-600">
+                            {errors.address}
+                        </p>
+                    )}
 
                     <div className="flex gap-2.5">
                         <FormField
@@ -129,6 +170,11 @@ export default function ParentSignupPage() {
                             minLength={8}
                             required
                         />
+                        {errors.email && (
+                            <p className="mt-1 text-[11px] text-red-600">
+                                {errors.password}
+                            </p>
+                        )}
                         <div className="flex-1">
                             <FormField
                                 label="Confirmer"
@@ -177,6 +223,6 @@ export default function ParentSignupPage() {
                     Se connecter
                 </a>
             </p>
-    </AuthLayout>
-  );
+        </AuthLayout>
+    );
 }

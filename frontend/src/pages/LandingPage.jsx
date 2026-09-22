@@ -3,8 +3,9 @@ import Hero from "../components/landing/Hero";
 import { TrustBanner, HowItWorks, AudienceSection } from "../components/landing/InfoSections";
 import { PaymentFlow, LearningPlatform } from "../components/landing/PaymentAndLearning";
 import { Testimonials, TeacherCta, Footer } from "../components/landing/SocialProofAndFooter";
-
+import { apiFetch } from "../lib/apiClient";
 export default function LandingPage() {
+  // apiFetch('/subjects').then(console.log).catch(console.error)
   return (
     <div className="font-sans">
       <Header />
@@ -17,6 +18,8 @@ export default function LandingPage() {
       <Testimonials />
       <TeacherCta />
       <Footer />
+      
     </div>
+    
   );
 }
