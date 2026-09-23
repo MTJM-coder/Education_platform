@@ -2,6 +2,7 @@ import { useState } from "react";
 import AuthLayout from "../components/Layout/AuthLayout";
 import FormField from "../components/ui/FormField";
 import authPanels from "../content/authPanels";
+import { apiFetch } from "../lib/apiClient";
 
 const initialForm = { login: "", password: "" };
 
@@ -21,10 +22,27 @@ export default function LoginPage() {
 
     try {
       // TODO: POST /api/auth/login
+      const response = await apiFetch("/auth/login", {
+        method: "post",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          login: form.login,
+          password: form.password
+        })
+
+      })
+      const role = response?.user?.role
+      if (role) {
+        window.location.href = `/${role}-dashboard`
+      } else {
+        setError("Rôle utilisateur non reconnu.");
+      }
     } catch {
       setError("Identifiants invalides. Vérifiez votre email/téléphone et votre mot de passe.");
     } finally {
+      setForm(initialForm);
       setSubmitting(false);
+
     }
   }
 
