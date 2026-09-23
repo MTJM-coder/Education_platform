@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   ChevronDown,
@@ -13,117 +13,28 @@ import {
   XCircle,
 } from "lucide-react";
 import SidebarAdmin from "../components/admin/SidebarAdmin";
-
-const users = [
-  {
-    id: 1,
-    name: "Jaudel Merlando",
-    email: "jaudel@example.com",
-    role: "Learner",
-    location: "Douala",
-    status: "Active",
-    joined: "18 Sept. 2026",
-  },
-  {
-    id: 2,
-    name: "Marie Acha",
-    email: "marie.acha@example.com",
-    role: "Parent",
-    location: "Yaoundé",
-    status: "Active",
-    joined: "17 Sept. 2026",
-  },
-  {
-    id: 3,
-    name: "Xavier Ndi",
-    email: "xavier.ndi@example.com",
-    role: "Teacher",
-    location: "Douala",
-    status: "Pending",
-    joined: "16 Sept. 2026",
-  },
-  {
-    id: 4,
-    name: "Patrick Bih",
-    email: "patrick.bih@example.com",
-    role: "Teacher",
-    location: "Buea",
-    status: "Active",
-    joined: "15 Sept. 2026",
-  },
-  {
-    id: 5,
-    name: "Daniel Nfor",
-    email: "daniel.nfor@example.com",
-    role: "Teacher",
-    location: "Douala",
-    status: "Suspended",
-    joined: "14 Sept. 2026",
-  },
-  {
-    id: 6,
-    name: "Sarah Mballa",
-    email: "sarah.mballa@example.com",
-    role: "Learner",
-    location: "Yaoundé",
-    status: "Active",
-    joined: "13 Sept. 2026",
-  },
-  {
-    id: 7,
-    name: "John Tamba",
-    email: "john.tamba@example.com",
-    role: "Admin Staff",
-    location: "Douala",
-    status: "Active",
-    joined: "12 Sept. 2026",
-  },
-  {
-    id: 8,
-    name: "Pauline Ekane",
-    email: "pauline.ekane@example.com",
-    role: "Parent",
-    location: "Douala",
-    status: "Active",
-    joined: "11 Sept. 2026",
-  },
-  {
-    id: 9,
-    name: "Emmanuel Fongang",
-    email: "emmanuel@example.com",
-    role: "Learner",
-    location: "Bafoussam",
-    status: "Inactive",
-    joined: "10 Sept. 2026",
-  },
-  {
-    id: 10,
-    name: "Claudine Ngo",
-    email: "claudine.ngo@example.com",
-    role: "Parent",
-    location: "Buea",
-    status: "Active",
-    joined: "9 Sept. 2026",
-  },
-];
+import { apiFetch, getToken } from "../lib/apiClient";
 
 const roleFilters = [
   "All",
-  "Learner",
-  "Parent",
-  "Teacher",
-  "Admin Staff",
+  "student",
+  "parent",
+  "teacher",
+  "admin Staff",
 ];
 
 const statusFilters = [
   "All statuses",
-  "Active",
-  "Pending",
-  "Suspended",
-  "Inactive",
+  "active",
+  "pending",
+  "suspended",
+  "inactive",
 ];
 
 export default function AdminUsersPage() {
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [usersError, setUsersError] = useState("");
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("All");
   const [statusFilter, setStatusFilter] =
@@ -131,44 +42,124 @@ export default function AdminUsersPage() {
 
   const [openMenu, setOpenMenu] = useState(null);
 
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      const query = search.toLowerCase().trim();
+  const handleSuspend = async (id) => {
+    try {
+      await apiFetch(`/admin/user/suspend/${id}`, {
+        method: "PATCH",
+      });
 
-      const matchesSearch =
-        !query ||
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        user.location.toLowerCase().includes(query);
-
-      const matchesRole =
-        roleFilter === "All" ||
-        user.role === roleFilter;
-
-      const matchesStatus =
-        statusFilter === "All statuses" ||
-        user.status === statusFilter;
-
-      return (
-        matchesSearch &&
-        matchesRole &&
-        matchesStatus
+      setUsers((currentUsers) =>
+        currentUsers.map((user) =>
+          user.id === id
+            ? { ...user, status: "suspended" }
+            : user
+        )
       );
-    });
-  }, [search, roleFilter, statusFilter]);
+      setOpenMenu(null);
+    } catch (error) {
+      setUsersError(error.message || "Unable to suspend user.");
+    }
+  };
+
+  const handleActivate = async (id) => {
+    try {
+      await apiFetch(`/admin/user/activate/${id}`, {
+        method: "PATCH",
+      });
+
+      setUsers((currentUsers) =>
+        currentUsers.map((user) =>
+          user.id === id
+            ? { ...user, status: "active" }
+            : user
+        )
+      );
+      setOpenMenu(null);
+    } catch (error) {
+      setUsersError(error.message || "Unable to activate user.");
+    }
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadUsers() {
+      if (!getToken()) {
+        if (mounted) {
+          setLoadingUsers(false);
+        }
+        return;
+      }
+
+      try {
+        const response = await apiFetch("/admin/users");
+        const loadedUsers = Array.isArray(response)
+          ? response
+          : response?.users ?? response?.data ?? [];
+
+        if (mounted) {
+          setUsers(loadedUsers);
+        }
+      } catch (error) {
+        if (mounted) {
+          setUsersError(error.message || "Unable to load users.");
+        }
+      } finally {
+        if (mounted) {
+          setLoadingUsers(false);
+        }
+      }
+    }
+
+    loadUsers();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+const filteredUsers = useMemo(() => {
+  return users.filter((user) => {
+    const query = search.toLowerCase().trim();
+
+    // 1. Recherche sécurisée (gestion des valeurs nulles/undefined)
+    const firstName = (user.first_name || "").toLowerCase();
+    const lastName = (user.last_name || "").toLowerCase(); // au cas où
+    const email = (user.email || "").toLowerCase();
+    const phone = (user.phone || "").toLowerCase();
+
+    const matchesSearch =
+      !query ||
+      firstName.includes(query) ||
+      lastName.includes(query) ||
+      email.includes(query) ||
+      phone.includes(query);
+
+    // 2. Filtre de Rôle (Insensible à la casse)
+    const matchesRole =
+      roleFilter === "All" ||
+      (user.role || "").toLowerCase() === roleFilter.toLowerCase();
+
+    // 3. Filtre de Statut (Insensible à la casse)
+    const matchesStatus =
+      statusFilter === "All statuses" ||
+      (user.status || "").toLowerCase() === statusFilter.toLowerCase();
+
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+}, [users, search, roleFilter, statusFilter]); 
 
   const totalUsers = users.length;
 
   const activeUsers = users.filter(
-    (user) => user.status === "Active"
+    (user) => user.status === "active"
   ).length;
 
   const pendingUsers = users.filter(
-    (user) => user.status === "Pending"
+    (user) => user.status === "pending"
   ).length;
 
   const teachers = users.filter(
-    (user) => user.role === "Teacher"
+    (user) => user.role === "teacher"
   ).length;
 
   return (
@@ -245,6 +236,18 @@ export default function AdminUsersPage() {
 
           {/* Main users section */}
           <section className="mt-7 rounded-2xl border border-gray-200 bg-white">
+            {loadingUsers && (
+              <p className="px-5 py-4 text-sm text-gray-500 sm:px-6">
+                Loading users...
+              </p>
+            )}
+
+            {usersError && (
+              <p className="px-5 py-4 text-sm text-red-600 sm:px-6">
+                {usersError}
+              </p>
+            )}
+
             {/* Toolbar */}
             <div className="border-b border-gray-100 p-5 sm:p-6">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -356,6 +359,8 @@ export default function AdminUsersPage() {
                       user={user}
                       openMenu={openMenu}
                       setOpenMenu={setOpenMenu}
+                      onSuspend={handleSuspend}
+                      onActivate={handleActivate}
                     />
                   ))}
                 </tbody>
@@ -370,6 +375,8 @@ export default function AdminUsersPage() {
                   user={user}
                   openMenu={openMenu}
                   setOpenMenu={setOpenMenu}
+                  onSuspend={handleSuspend}
+                  onActivate={handleActivate}
                 />
               ))}
             </div>
@@ -464,16 +471,18 @@ function UserRow({
   user,
   openMenu,
   setOpenMenu,
+  onSuspend,
+  onActivate,
 }) {
   return (
     <tr className="border-b border-gray-100 last:border-0 hover:bg-[#FCFBFD]">
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
-          <Avatar name={user.name} />
+          <Avatar name={user.first_name} />
 
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-pf-purple-dark">
-              {user.name}
+              {user.first_name}
             </p>
 
             <p className="mt-0.5 truncate text-xs text-gray-400">
@@ -484,19 +493,19 @@ function UserRow({
       </td>
 
       <td className="px-4 py-4">
-        <RoleBadge role={user.role} />
+        <RoleBadge role={user?.role} />
       </td>
 
       <td className="px-4 py-4 text-xs text-gray-500">
-        {user.location}
+        {user?.parent_profile?.address || user?.teacher_profile?.location || user?.learner_profile?.location||'-'}
       </td>
 
       <td className="px-4 py-4">
-        <StatusBadge status={user.status} />
+        <StatusBadge status={user?.status??''} />
       </td>
 
       <td className="px-4 py-4 text-xs text-gray-500">
-        {user.joined}
+         {new Date(user.created_at).toLocaleDateString("fr-FR")}
       </td>
 
       <td className="relative px-6 py-4 text-right">
@@ -513,7 +522,11 @@ function UserRow({
         </button>
 
         {openMenu === user.id && (
-          <ActionMenu user={user} />
+          <ActionMenu
+            user={user}
+            onSuspend={onSuspend}
+            onActivate={onActivate}
+          />
         )}
       </td>
     </tr>
@@ -528,17 +541,19 @@ function MobileUserCard({
   user,
   openMenu,
   setOpenMenu,
+  onSuspend,
+  onActivate,
 }) {
   return (
     <div className="relative p-5">
       <div className="flex items-start gap-3">
-        <Avatar name={user.name} />
+        <Avatar name={user.first_name} />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-pf-purple-dark">
-                {user.name}
+                {user.first_name}
               </p>
 
               <p className="mt-0.5 truncate text-xs text-gray-400">
@@ -561,18 +576,23 @@ function MobileUserCard({
 
           <div className="mt-3 flex flex-wrap gap-2">
             <RoleBadge role={user.role} />
-            <StatusBadge status={user.status} />
+            <StatusBadge status={user?.status??''} />
           </div>
 
           <div className="mt-3 flex items-center justify-between text-[11px] text-gray-400">
-            <span>{user.location}</span>
-            <span>{user.joined}</span>
+            <span>{user?.location??''}</span>
+            <span>{new Date(user.created_at).toLocaleDateString('fr-FR')}</span>
           </div>
         </div>
       </div>
 
       {openMenu === user.id && (
-        <ActionMenu user={user} mobile />
+        <ActionMenu
+          user={user}
+          mobile
+          onSuspend={onSuspend}
+          onActivate={onActivate}
+        />
       )}
     </div>
   );
@@ -602,10 +622,11 @@ function Avatar({ name }) {
 
 function RoleBadge({ role }) {
   const styles = {
-    Learner: "bg-blue-50 text-blue-600",
-    Parent: "bg-purple-50 text-purple-600",
-    Teacher: "bg-green-50 text-green-600",
-    "Admin Staff": "bg-amber-50 text-amber-600",
+    learner: "bg-blue-50 text-blue-600",
+    parent: "bg-purple-50 text-purple-600",
+    teacher: "bg-green-50 text-green-600",
+    "admin Staff" : "bg-amber-50 text-amber-600",
+    "admin":"bg-amber-50 text-amber-600",
   };
 
   return (
@@ -625,10 +646,10 @@ function RoleBadge({ role }) {
 
 function StatusBadge({ status }) {
   const styles = {
-    Active: "bg-green-50 text-green-600",
-    Pending: "bg-amber-50 text-amber-600",
-    Suspended: "bg-red-50 text-red-600",
-    Inactive: "bg-gray-100 text-gray-500",
+    active: "bg-green-50 text-green-600",
+    pending: "bg-amber-50 text-amber-600",
+    suspended: "bg-red-50 text-red-600",
+    inactive: "bg-gray-100 text-gray-500",
   };
 
   return (
@@ -639,11 +660,11 @@ function StatusBadge({ status }) {
     >
       <span
         className={`h-1.5 w-1.5 rounded-full ${
-          status === "Active"
+          status === "active"
             ? "bg-green-500"
-            : status === "Pending"
+            : status === "pending"
             ? "bg-amber-500"
-            : status === "Suspended"
+            : status === "suspended"
             ? "bg-red-500"
             : "bg-gray-400"
         }`}
@@ -658,7 +679,12 @@ function StatusBadge({ status }) {
 /* ACTION MENU                                                 */
 /* ========================================================= */
 
-function ActionMenu({ user, mobile = false }) {
+function ActionMenu({
+  user,
+  mobile = false,
+  onSuspend,
+  onActivate,
+}) {
   return (
     <div
       className={`absolute z-30 w-44 rounded-xl border border-gray-200 bg-white p-1.5 text-left shadow-lg ${
@@ -667,13 +693,13 @@ function ActionMenu({ user, mobile = false }) {
           : "right-6 top-12"
       }`}
     >
-      <a
+      {/* <a
         href={`/admin-users/${user.id}`}
         className="flex items-center justify-between rounded-lg px-3 py-2 text-xs text-gray-600 hover:bg-pf-purple-light hover:text-pf-purple"
       >
         View profile
         <ChevronRight className="h-3.5 w-3.5" />
-      </a>
+      </a> */}
 
       <button
         type="button"
@@ -682,8 +708,9 @@ function ActionMenu({ user, mobile = false }) {
         Edit user
       </button>
 
-      {user.status === "Active" ? (
+      {user.status === "active" ? (
         <button
+          onClick={() => onSuspend(user.id)}
           type="button"
           className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-500 hover:bg-red-50"
         >
@@ -691,6 +718,7 @@ function ActionMenu({ user, mobile = false }) {
         </button>
       ) : (
         <button
+        onClick={() => onActivate(user.id)}
           type="button"
           className="w-full rounded-lg px-3 py-2 text-left text-xs text-green-600 hover:bg-green-50"
         >

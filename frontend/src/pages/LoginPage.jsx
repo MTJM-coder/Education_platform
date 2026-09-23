@@ -2,7 +2,7 @@ import { useState } from "react";
 import AuthLayout from "../components/Layout/AuthLayout";
 import FormField from "../components/ui/FormField";
 import authPanels from "../content/authPanels";
-import { apiFetch } from "../lib/apiClient";
+import { apiFetch, setToken } from "../lib/apiClient";
 
 const initialForm = { login: "", password: "" };
 
@@ -31,6 +31,8 @@ export default function LoginPage() {
         })
 
       })
+    
+      setToken(response.token)
       const role = response?.user?.role
       if (role) {
         window.location.href = `/${role}-dashboard`
