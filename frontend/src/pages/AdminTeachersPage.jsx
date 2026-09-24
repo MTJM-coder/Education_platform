@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Award,
   CheckCircle2,
@@ -14,99 +14,52 @@ import {
   XCircle,
 } from "lucide-react";
 import SidebarAdmin from "../components/admin/SidebarAdmin";
+import { apiFetch } from "../lib/apiClient";
 
-const teachers = [
-  {
-    id: 1,
-    name: "Xavier Ndi",
-    email: "xavier.ndi@example.com",
-    subjects: ["Mathematics", "Physics"],
-    location: "Douala",
-    experience: "5 years",
-    stars: 4.8,
-    students: 18,
-    status: "Validated",
-    documents: "Complete",
-    joined: "16 Sept. 2026",
-  },
-  {
-    id: 2,
-    name: "Patrick Bih",
-    email: "patrick.bih@example.com",
-    subjects: ["Computer Science"],
-    location: "Buea",
-    experience: "3 years",
-    stars: 4.5,
-    students: 12,
-    status: "Validated",
-    documents: "Complete",
-    joined: "15 Sept. 2026",
-  },
-  {
-    id: 3,
-    name: "Daniel Nfor",
-    email: "daniel.nfor@example.com",
-    subjects: ["English", "French"],
-    location: "Douala",
-    experience: "2 years",
-    stars: 0,
-    students: 0,
-    status: "Pending",
-    documents: "Review required",
-    joined: "14 Sept. 2026",
-  },
-  {
-    id: 4,
-    name: "Marie Acha",
-    email: "marie.acha@example.com",
-    subjects: ["Biology", "Chemistry"],
-    location: "Yaoundé",
-    experience: "6 years",
-    stars: 4.9,
-    students: 24,
-    status: "Validated",
-    documents: "Complete",
-    joined: "12 Sept. 2026",
-  },
-  {
-    id: 5,
-    name: "Claudine Ngo",
-    email: "claudine.ngo@example.com",
-    subjects: ["Mathematics"],
-    location: "Douala",
-    experience: "1 year",
-    stars: 0,
-    students: 0,
-    status: "Pending",
-    documents: "Incomplete",
-    joined: "10 Sept. 2026",
-  },
-  {
-    id: 6,
-    name: "John Tamba",
-    email: "john.tamba@example.com",
-    subjects: ["History", "Geography"],
-    location: "Bamenda",
-    experience: "4 years",
-    stars: 4.3,
-    students: 9,
-    status: "Suspended",
-    documents: "Complete",
-    joined: "8 Sept. 2026",
-  },
-];
 
 const statusFilters = [
   "All",
-  "Validated",
-  "Pending",
-  "Suspended",
+  "validated",
+  "pending",
+  "suspended",
 ];
+
+function getUniqueLearnerCount(teacher) {
+  const uniqueLearnerIds = new Set(
+    (teacher?.assignments ?? [])
+      .map((assignment) => assignment?.tutoring_request?.learner_id)
+      .filter(Boolean)
+  );
+
+  return uniqueLearnerIds.size;
+}
+
+function getTeacherId(teacher) {
+  return teacher?.id ?? teacher?.user_id ?? teacher?.user?.id;
+}
 
 export default function AdminTeachersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [openMenu, setOpenMenu] = useState(null);
+   const [teachers, setTeachers] = useState([]);
+  const [teachersErrors, setTeachersErrors] = useState("");
+
+  useEffect(() => {
+    const loadTeachers = async () => {
+      try {
+        const response = await apiFetch("/admin/teachers");
+        const loadedTeachers = Array.isArray(response)
+          ? response
+          : response?.teachers ?? response?.data ?? [];
+        setTeachers(loadedTeachers);
+      } catch (error) {
+        setTeachersErrors(error.message || "Unable to load teachers.");
+      }
+    };
+
+    loadTeachers();
+  }, []);
 
   const filteredTeachers = useMemo(() => {
     const query = search.toLowerCase().trim();
@@ -114,37 +67,39 @@ export default function AdminTeachersPage() {
     return teachers.filter((teacher) => {
       const matchesSearch =
         !query ||
-        teacher.name.toLowerCase().includes(query) ||
-        teacher.email.toLowerCase().includes(query) ||
+        teacher.user.first_name.toLowerCase().includes(query) ||
+        teacher.user.last_name.toLowerCase().includes(query) ||
+        teacher.user.email.toLowerCase().includes(query) ||
         teacher.location.toLowerCase().includes(query) ||
-        teacher.subjects.some((subject) =>
+        teacher.teacherSubjects.some((subject) =>
           subject.toLowerCase().includes(query)
         );
 
       const matchesStatus =
         statusFilter === "All" ||
-        teacher.status === statusFilter;
+        teacher.validation_status === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
-  }, [search, statusFilter]);
+  }, [teachers, search, statusFilter]);
 
   const validated = teachers.filter(
-    (teacher) => teacher.status === "Validated"
+    (teacher) => teacher.validation_status === "validated"
   ).length;
 
-  const pending = teachers.filter(
-    (teacher) => teacher.status === "Pending"
+  const pending = teachers.filter( 
+    (teacher) => teacher.validation_status === "pending"
   ).length;
 
   const suspended = teachers.filter(
-    (teacher) => teacher.status === "Suspended"
+    (teacher) => teacher.validation_status === "suspended"
   ).length;
 
   const totalStudents = teachers.reduce(
-    (total, teacher) => total + teacher.students,
+    (total, teacher) => total + getUniqueLearnerCount(teacher),
     0
   );
+  
 
   return (
     <div className="min-h-screen bg-[#FAF9FB] font-sans text-[#302C38]">
@@ -228,8 +183,8 @@ export default function AdminTeachersPage() {
                   </h2>
 
                   <p className="mt-1 text-sm text-gray-500">
-                    {filteredTeachers.length} teacher
-                    {filteredTeachers.length !== 1
+                    {filteredTeachers?.length} teacher
+                    {filteredTeachers?.length !== 1
                       ? "s"
                       : ""}{" "}
                     displayed
@@ -257,11 +212,10 @@ export default function AdminTeachersPage() {
                     key={status}
                     type="button"
                     onClick={() => setStatusFilter(status)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                      statusFilter === status
-                        ? "bg-pf-purple text-white"
-                        : "bg-[#FAF9FB] text-gray-500 hover:bg-pf-purple-light hover:text-pf-purple"
-                    }`}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${statusFilter === status
+                      ? "bg-pf-purple text-white"
+                      : "bg-[#FAF9FB] text-gray-500 hover:bg-pf-purple-light hover:text-pf-purple"
+                      }`}
                   >
                     {status}
                   </button>
@@ -271,7 +225,7 @@ export default function AdminTeachersPage() {
 
             {/* Desktop */}
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[1050px]">
+              <table className="w-full min-w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-[#FCFBFD] text-left">
                     <th className="px-6 py-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
@@ -291,10 +245,6 @@ export default function AdminTeachersPage() {
                     </th>
 
                     <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                      Documents
-                    </th>
-
-                    <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
                       Status
                     </th>
 
@@ -305,9 +255,9 @@ export default function AdminTeachersPage() {
                 </thead>
 
                 <tbody>
-                  {filteredTeachers.map((teacher) => (
+                  {filteredTeachers?.map((teacher) => (
                     <TeacherRow
-                      key={teacher.id}
+                      key={teacher?.id}
                       teacher={teacher}
                       openMenu={openMenu}
                       setOpenMenu={setOpenMenu}
@@ -319,7 +269,7 @@ export default function AdminTeachersPage() {
 
             {/* Mobile */}
             <div className="divide-y divide-gray-100 md:hidden">
-              {filteredTeachers.map((teacher) => (
+              {filteredTeachers?.map((teacher) => (
                 <TeacherMobileCard
                   key={teacher.id}
                   teacher={teacher}
@@ -386,15 +336,15 @@ function TeacherRow({
     <tr className="border-b border-gray-100 last:border-0 hover:bg-[#FCFBFD]">
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
-          <Avatar name={teacher.name} />
+          <Avatar name={teacher?.user?.first_name+" "+teacher?.user?.last_name} />
 
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-pf-purple-dark">
-              {teacher.name}
+              {teacher?.user?.first_name+" "+teacher?.user?.last_name}
             </p>
 
             <p className="mt-0.5 truncate text-xs text-gray-400">
-              {teacher.email}
+              {teacher?.email}
             </p>
           </div>
         </div>
@@ -402,7 +352,7 @@ function TeacherRow({
 
       <td className="px-4 py-4">
         <div className="flex max-w-[190px] flex-wrap gap-1">
-          {teacher.subjects.map((subject) => (
+          {teacher?.teacherSubjects?.map((subject) => (
             <span
               key={subject}
               className="rounded-full bg-pf-purple-light px-2 py-1 text-[10px] text-pf-purple"
@@ -415,11 +365,11 @@ function TeacherRow({
 
       <td className="px-4 py-4">
         <p className="text-xs text-gray-500">
-          {teacher.location}
+          {teacher?.location}
         </p>
 
         <p className="mt-1 text-[10px] text-gray-400">
-          {teacher.experience}
+          {teacher?.experience_years}
         </p>
       </td>
 
@@ -428,21 +378,17 @@ function TeacherRow({
           <Star className="h-3.5 w-3.5 fill-pf-gold text-pf-gold" />
 
           <span className="text-xs font-semibold text-pf-purple-dark">
-            {teacher.stars > 0 ? teacher.stars : "—"}
+            { teacher?.stars }
           </span>
         </div>
 
         <p className="mt-1 text-[10px] text-gray-400">
-          {teacher.students} students
+          {getUniqueLearnerCount(teacher)} students
         </p>
       </td>
 
       <td className="px-4 py-4">
-        <DocumentStatus status={teacher.documents} />
-      </td>
-
-      <td className="px-4 py-4">
-        <TeacherStatus status={teacher.status} />
+        <TeacherStatus status={teacher?.validation_status} />
       </td>
 
       <td className="relative px-6 py-4 text-right">
@@ -480,17 +426,17 @@ function TeacherMobileCard({
   return (
     <div className="relative p-5">
       <div className="flex items-start gap-3">
-        <Avatar name={teacher.name} />
+        <Avatar name={teacher?.user?.first_name+" "+teacher?.user?.last_name} />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-pf-purple-dark">
-                {teacher.name}
+                {teacher?.user?.first_name+" "+teacher?.user?.last_name}
               </p>
 
               <p className="mt-0.5 truncate text-xs text-gray-400">
-                {teacher.email}
+                {teacher?.email}
               </p>
             </div>
 
@@ -510,7 +456,7 @@ function TeacherMobileCard({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1">
-            {teacher.subjects.map((subject) => (
+            {teacher?.teacherSubjects?.map((subject) => (
               <span
                 key={subject}
                 className="rounded-full bg-pf-purple-light px-2 py-1 text-[10px] text-pf-purple"
@@ -521,8 +467,7 @@ function TeacherMobileCard({
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <TeacherStatus status={teacher.status} />
-            <DocumentStatus status={teacher.documents} />
+            <TeacherStatus status={teacher?.validation_status} />
           </div>
 
           <div className="mt-3 flex items-center justify-between">
@@ -537,7 +482,7 @@ function TeacherMobileCard({
             </div>
 
             <span className="text-[11px] text-gray-400">
-              {teacher.location} · {teacher.students} students
+              {teacher?.location} · {getUniqueLearnerCount(teacher)} students
             </span>
           </div>
         </div>
@@ -575,59 +520,33 @@ function Avatar({ name }) {
 /* DOCUMENT STATUS                                             */
 /* ========================================================= */
 
-function DocumentStatus({ status }) {
-  const complete = status === "Complete";
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${
-        complete
-          ? "bg-green-50 text-green-600"
-          : "bg-amber-50 text-amber-600"
-      }`}
-    >
-      {complete ? (
-        <CheckCircle2 className="h-3 w-3" />
-      ) : (
-        <FileCheck2 className="h-3 w-3" />
-      )}
-
-      {status}
-    </span>
-  );
-}
-
 /* ========================================================= */
-/* TEACHER STATUS                                              */
+/* TEACHER STATUS                                             */
 /* ========================================================= */
 
 function TeacherStatus({ status }) {
   const config = {
-    Validated: {
+    validated: {
       className: "bg-green-50 text-green-600",
-      icon: CheckCircle2,
     },
 
-    Pending: {
+    pending: {
       className: "bg-amber-50 text-amber-600",
-      icon: FileCheck2,
     },
 
-    Suspended: {
+    suspended: {
       className: "bg-red-50 text-red-600",
-      icon: XCircle,
     },
   };
 
-  const current = config[status] || config.Pending;
-  const Icon = current.icon;
+  const normalizedStatus = (status || "pending").toLowerCase();
+  const current = config[normalizedStatus] || config.pending;
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${current.className}`}
     >
-      <Icon className="h-3 w-3" />
-      {status}
+      {normalizedStatus}
     </span>
   );
 }
@@ -640,16 +559,17 @@ function TeacherActionMenu({
   teacher,
   mobile = false,
 }) {
+  const teacherId = getTeacherId(teacher);
+
   return (
     <div
-      className={`absolute z-30 w-48 rounded-xl border border-gray-200 bg-white p-1.5 text-left shadow-lg ${
-        mobile
-          ? "right-5 top-16"
-          : "right-6 top-12"
-      }`}
+      className={`absolute z-30 w-48 rounded-xl border border-gray-200 bg-white p-1.5 text-left shadow-lg ${mobile
+        ? "right-5 top-16"
+        : "right-6 top-12"
+        }`}
     >
       <a
-        href={`/admin-teachers/${teacher.id}`}
+        href={teacherId ? `/admin-teachers/${teacherId}` : "#"}
         className="flex items-center justify-between rounded-lg px-3 py-2 text-xs text-gray-600 hover:bg-pf-purple-light hover:text-pf-purple"
       >
         View teacher
@@ -657,13 +577,13 @@ function TeacherActionMenu({
       </a>
 
       <a
-        href={`/admin-teachers/${teacher.id}/documents`}
+        href={teacherId ? `/admin-teachers/${teacherId}/documents` : "#"}
         className="block rounded-lg px-3 py-2 text-xs text-gray-600 hover:bg-gray-50"
       >
         Review documents
       </a>
 
-      {teacher.status === "Pending" && (
+      {teacher.validation_status === "pending" && (
         <button
           type="button"
           className="w-full rounded-lg px-3 py-2 text-left text-xs text-green-600 hover:bg-green-50"
@@ -672,7 +592,7 @@ function TeacherActionMenu({
         </button>
       )}
 
-      {teacher.status === "Validated" && (
+      {teacher.validation_status === "validated" && (
         <button
           type="button"
           className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-500 hover:bg-red-50"
@@ -681,7 +601,7 @@ function TeacherActionMenu({
         </button>
       )}
 
-      {teacher.status === "Suspended" && (
+      {teacher.validation_status === "Suspended" && (
         <button
           type="button"
           className="w-full rounded-lg px-3 py-2 text-left text-xs text-green-600 hover:bg-green-50"
