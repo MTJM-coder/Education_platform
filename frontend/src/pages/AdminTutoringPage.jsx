@@ -845,7 +845,7 @@ function mapAssignment(assignment) {
     parent: [parentUser.first_name, parentUser.last_name].filter(Boolean).join(" ") || parent.address || "—",
     subject: request.subject?.name ?? "—",
     level: learner.level?.name ?? "—",
-    location: parent.address ?? "—",
+    location: request.location ?? "—",
     frequency: [request.preferred_day, preferredTime].filter(Boolean).join(" · ") || "—",
     startDate: assignment.created_at ? new Date(assignment.created_at).toLocaleDateString() : "—",
     sessions: sessions.length,

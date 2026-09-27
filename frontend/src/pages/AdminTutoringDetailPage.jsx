@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Clock3,
   Coins,
-  FileText,
   GraduationCap,
   MapPin,
   MessageSquare,
@@ -14,67 +13,75 @@ import {
   XCircle,
 } from "lucide-react";
 import SidebarAdmin from "../components/admin/SidebarAdmin";
-
-const tutoring = {
-  id: "TUT-004",
-  status: "Active",
-  subject: "Mathematics",
-  level: "Secondary",
-  className: "Form 2",
-
-  teacher: {
-    name: "Samuel Mbarga",
-    id: "TCH-018",
-    phone: "+237 6 90 12 34 56",
-    rating: 4.8,
-    stars: 4,
-  },
-
-  learner: {
-    name: "Kevin Junior",
-    age: 14,
-    className: "Form 2",
-    school: "Government Bilingual High School",
-  },
-
-  parent: {
-    name: "Jean Pierre Mbarga",
-    phone: "+237 6 77 45 21 90",
-  },
-
-  schedule: {
-    frequency: "3 sessions / week",
-    days: ["Monday", "Wednesday", "Saturday"],
-    time: "16:00 - 18:00",
-    startDate: "September 7, 2026",
-    nextSession: "Wednesday, September 23, 2026",
-  },
-
-  location: {
-    type: "Home tutoring",
-    address: "Bonamoussadi, Douala",
-  },
-
-  payment: {
-    plan: "Monthly",
-    amount: 45000,
-    commission: 4500,
-    teacherAmount: 40500,
-    status: "Paid",
-    lastPayment: "September 7, 2026",
-  },
-
-  progress: {
-    completedSessions: 8,
-    plannedSessions: 12,
-    attendance: 92,
-    averageScore: 78,
-  },
-
-  createdAt: "September 5, 2026",
-};
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { apiFetch } from "../lib/apiClient";
 
 export default function AdminTutoringDetailsPage() {
+  const [tutoring, setTutoring] = useState(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const { id } = useParams();
+
+  useEffect(() => {
+    async function fetchTutoring() {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await apiFetch(`/assignments/${id}`);
+        setTutoring(response?.data ?? response);
+      } catch (fetchError) {
+        setError(fetchError.message || "Unable to load this tutoring assignment.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchTutoring();
+  }, [id]);
+
+  const request = tutoring?.tutoringRequest ?? tutoring?.tutoring_request;
+  const learner = request?.learner;
+  const teacher = tutoring?.teacher;
+  const sessions = tutoring?.sessions ?? [];
+  const payments = tutoring?.payments ?? [];
+  const completedSessions = sessions.filter((session) => session.status?.toLowerCase() === "completed").length;
+  const confirmedSessions = sessions.filter((session) => session.confirmed_by_teacher_at && session.confirmed_by_parent_at).length;
+  const paidPayments = payments.filter((payment) => payment.status?.toLowerCase() === "paid");
+  const totalPaid = paidPayments.reduce((total, payment) => total + Number(payment.amount ?? 0), 0);
+  const totalCommission = paidPayments.reduce((total, payment) => total + Number(payment.commission_amount ?? 0), 0);
+  const totalTeacherEarnings = paidPayments.reduce((total, payment) => total + Number(payment.teacher_amount ?? 0), 0);
+  const latestPayment = [...payments].sort((a, b) => new Date(b.created_at ?? 0) - new Date(a.created_at ?? 0))[0];
+  const nextSession = [...sessions]
+    .filter((session) => new Date(`${session.session_date}T${session.start_time ?? "00:00"}`) >= new Date())
+    .sort((a, b) => new Date(a.session_date) - new Date(b.session_date))[0];
+
+  async function cancelTutoring() {
+    if (!window.confirm("Cancel this tutoring assignment?")) return;
+    setSaving(true);
+    setError("");
+    try {
+      const response = await apiFetch(`/assignments/${id}/cancel`, { method: "PATCH" });
+      setTutoring((current) => ({ ...current, ...(response?.data ?? response) }));
+    } catch (cancelError) {
+      setError(cancelError.message || "Unable to cancel this assignment.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return <DetailPageState message="Loading tutoring assignment..." />;
+  }
+
+  if (error && !tutoring) {
+    return <DetailPageState message={error} isError />;
+  }
+
+  if (!tutoring) {
+    return <DetailPageState message="Tutoring assignment not found." isError />;
+  }
   return (
     <div className="min-h-screen bg-[#FAF9FB] font-sans text-[#302C38]">
       <SidebarAdmin activeItem="Tutoring" />
@@ -113,6 +120,7 @@ export default function AdminTutoringDetailsPage() {
         </header>
 
         <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8">
+          {error && <p role="alert" className="mb-5 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
           {/* PAGE HEADER */}
           <section>
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -122,13 +130,13 @@ export default function AdminTutoringDetailsPage() {
                     TUTORING DETAILS
                   </p>
 
-                  <span className="rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-semibold text-green-600">
-                    {tutoring.status}
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${tutoring.status?.toLowerCase() === "active" ? "bg-green-50 text-green-600" : tutoring.status?.toLowerCase() === "pending" ? "bg-amber-50 text-amber-600" : "bg-gray-100 text-gray-600"}`}>
+                    {tutoring.status ?? "Unknown"}
                   </span>
                 </div>
 
                 <h1 className="mt-1 font-serif text-2xl font-medium text-pf-purple-dark sm:text-3xl">
-                  {tutoring.subject} Tutoring
+                  {request?.subject?.name ?? "Tutoring"}
                 </h1>
 
                 <p className="mt-2 text-sm text-gray-500">
@@ -139,55 +147,20 @@ export default function AdminTutoringDetailsPage() {
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Contact
-                </button>
-
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-lg bg-pf-purple px-4 py-2.5 text-xs font-medium text-white shadow-sm hover:bg-pf-purple-dark"
-                >
-                  <FileText className="h-4 w-4" />
-                  View report
-                </button>
-              </div>
+              {teacher?.user?.email && (
+                <a href={`tel:${teacher.user?.phone}`} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                  <MessageSquare className="h-4 w-4" /> Contact teacher
+                </a>
+              )}
             </div>
           </section>
 
           {/* SUMMARY CARDS */}
           <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard
-              icon={GraduationCap}
-              label="Subject"
-              value={tutoring.subject}
-              detail={`${tutoring.level} · ${tutoring.className}`}
-            />
-
-            <SummaryCard
-              icon={CalendarDays}
-              label="Schedule"
-              value={tutoring.schedule.frequency}
-              detail={tutoring.schedule.time}
-            />
-
-            <SummaryCard
-              icon={Coins}
-              label="Monthly payment"
-              value={`${formatMoney(tutoring.payment.amount)} FCFA`}
-              detail={tutoring.payment.status}
-            />
-
-            <SummaryCard
-              icon={CheckCircle2}
-              label="Attendance"
-              value={`${tutoring.progress.attendance}%`}
-              detail={`${tutoring.progress.completedSessions} sessions completed`}
-            />
+            <SummaryCard icon={GraduationCap} label="Subject" value={request?.subject?.name ?? "—"} detail={`${learner?.level?.name ?? "Level unavailable"} · ${learner?.classroom?.name ?? "Class unavailable"}`} />
+            <SummaryCard icon={CalendarDays} label="Sessions" value={`${completedSessions}/${sessions.length}`} detail="Completed sessions" />
+            <SummaryCard icon={Coins} label="Payments received" value={`${formatMoney(totalPaid)} FCFA`} detail={`${paidPayments.length} paid payment${paidPayments.length === 1 ? "" : "s"}`} />
+            <SummaryCard icon={CheckCircle2} label="Confirmed attendance" value={`${confirmedSessions}/${sessions.length}`} detail="Confirmed by both participants" />
           </section>
 
           {/* MAIN GRID */}
@@ -203,26 +176,23 @@ export default function AdminTutoringDetailsPage() {
                   <PersonCard
                     icon={GraduationCap}
                     role="Teacher"
-                    name={tutoring.teacher.name}
-                    detail={`${tutoring.teacher.id} · ${tutoring.teacher.rating} rating`}
-                    href={`/admin-teachers/${tutoring.teacher.id.replace(
-                      "TCH-",
-                      ""
-                    )}`}
+                    name={personName(teacher?.user)}
+                    detail={`${teacher?.user?.email ?? "Email unavailable"} · ${teacher?.stars ?? "—"} stars`}
+                    href={teacher?.user?.id ? `/admin-teachers/${teacher.user.id}` : undefined}
                   />
 
                   <PersonCard
                     icon={UserRound}
                     role="Learner"
-                    name={tutoring.learner.name}
-                    detail={`${tutoring.learner.age} years · ${tutoring.learner.className}`}
+                    name={personName(learner?.user)}
+                    detail={`${learner?.level?.name ?? "Level unavailable"} · ${learner?.classroom?.name ?? "Class unavailable"}`}
                   />
 
                   <PersonCard
                     icon={UsersRound}
                     role="Parent"
-                    name={tutoring.parent.name}
-                    detail={tutoring.parent.phone}
+                    name={personName(learner?.parentProfile?.user)}
+                    detail={learner?.parentProfile?.user?.phone ?? learner?.parentProfile?.address ?? "Contact unavailable"}
                   />
                 </div>
               </SectionCard>
@@ -235,32 +205,32 @@ export default function AdminTutoringDetailsPage() {
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <InfoBox
                     label="Subject"
-                    value={tutoring.subject}
+                    value={request?.subject?.name ?? "—"}
                   />
 
                   <InfoBox
                     label="Level"
-                    value={tutoring.level}
+                    value={learner?.level?.name ?? "—"}
                   />
 
                   <InfoBox
                     label="Class"
-                    value={tutoring.className}
+                    value={learner?.classroom?.name ?? "—"}
                   />
 
                   <InfoBox
                     label="School"
-                    value={tutoring.learner.school}
+                    value={learner?.school_name ?? "—"}
                   />
 
                   <InfoBox
                     label="Teacher rating"
-                    value={`${tutoring.teacher.rating} / 5`}
+                    value={teacher?.expected_rate != null ? `${teacher.expected_rate} FCFA/session` : "—"}
                   />
 
                   <InfoBox
                     label="Teacher stars"
-                    value={`${tutoring.teacher.stars} stars`}
+                    value={teacher?.stars != null ? `${teacher.stars} stars` : "—"}
                   />
                 </div>
               </SectionCard>
@@ -274,23 +244,23 @@ export default function AdminTutoringDetailsPage() {
                   <InfoBox
                     icon={CalendarDays}
                     label="Days"
-                    value={tutoring.schedule.days.join(" · ")}
+                    value={request?.preferred_day ?? "Not specified"}
                   />
 
                   <InfoBox
                     icon={Clock3}
                     label="Time"
-                    value={tutoring.schedule.time}
+                    value={[request?.preferred_start_time, request?.preferred_end_time].filter(Boolean).join(" – ") || "Not specified"}
                   />
 
                   <InfoBox
                     label="Start date"
-                    value={tutoring.schedule.startDate}
+                    value={formatDate(tutoring.created_at)}
                   />
 
                   <InfoBox
                     label="Next session"
-                    value={tutoring.schedule.nextSession}
+                    value={nextSession ? `${formatDate(nextSession.session_date)} · ${nextSession.start_time ?? ""}` : "No upcoming session"}
                   />
                 </div>
               </SectionCard>
@@ -307,11 +277,11 @@ export default function AdminTutoringDetailsPage() {
 
                   <div>
                     <p className="text-sm font-semibold text-pf-purple-dark">
-                      {tutoring.location.type}
+                      {request?.location ?? "Location not specified"}
                     </p>
 
                     <p className="mt-1 text-xs text-gray-500">
-                      {tutoring.location.address}
+                      {learner?.parentProfile?.address ?? ""}
                     </p>
                   </div>
                 </div>
@@ -320,28 +290,21 @@ export default function AdminTutoringDetailsPage() {
 
             {/* RIGHT */}
             <div className="space-y-6">
-              {/* PROGRESS */}
               <SectionCard
                 title="Tutoring progress"
-                description="Current academic and attendance progress."
+                description="Session completion and mutual confirmations."
               >
                 <div className="space-y-5">
                   <ProgressItem
                     label="Sessions completed"
-                    value={tutoring.progress.completedSessions}
-                    total={tutoring.progress.plannedSessions}
+                    value={completedSessions}
+                    total={sessions.length}
                   />
 
                   <ProgressItem
-                    label="Attendance"
-                    value={tutoring.progress.attendance}
-                    suffix="%"
-                  />
-
-                  <ProgressItem
-                    label="Average assessment score"
-                    value={tutoring.progress.averageScore}
-                    suffix="%"
+                    label="Sessions confirmed by both"
+                    value={confirmedSessions}
+                    total={sessions.length}
                   />
                 </div>
               </SectionCard>
@@ -352,29 +315,26 @@ export default function AdminTutoringDetailsPage() {
                 description="Financial information for this tutoring."
               >
                 <div className="space-y-4">
-                  <PaymentRow
-                    label="Plan"
-                    value={tutoring.payment.plan}
-                  />
+                  <PaymentRow label="Payment periods" value={payments.map((payment) => payment.period).filter(Boolean).join(", ") || "No payments"} />
 
                   <PaymentRow
                     label="Parent paid"
                     value={`${formatMoney(
-                      tutoring.payment.amount
+                      totalPaid
                     )} FCFA`}
                   />
 
                   <PaymentRow
                     label="Platform commission"
                     value={`${formatMoney(
-                      tutoring.payment.commission
+                      totalCommission
                     )} FCFA`}
                   />
 
                   <PaymentRow
                     label="Teacher earnings"
                     value={`${formatMoney(
-                      tutoring.payment.teacherAmount
+                      totalTeacherEarnings
                     )} FCFA`}
                   />
 
@@ -383,14 +343,14 @@ export default function AdminTutoringDetailsPage() {
                       Payment status
                     </span>
 
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-semibold text-green-600">
-                      <CheckCircle2 className="h-3 w-3" />
-                      {tutoring.payment.status}
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ${latestPayment?.status?.toLowerCase() === "paid" ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-600"}`}>
+                      {latestPayment?.status?.toLowerCase() === "paid" ? <CheckCircle2 className="h-3 w-3" /> : <Clock3 className="h-3 w-3" />}
+                      {latestPayment?.status ?? "No payment"}
                     </span>
                   </div>
 
                   <p className="text-[10px] text-gray-400">
-                    Last payment: {tutoring.payment.lastPayment}
+                    Last payment: {formatDate(latestPayment?.created_at)}
                   </p>
                 </div>
               </SectionCard>
@@ -401,36 +361,14 @@ export default function AdminTutoringDetailsPage() {
                 description="Actions available to platform administrators."
               >
                 <div className="space-y-2">
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-xl border border-gray-200 px-4 py-3 text-left text-xs font-medium text-gray-600 hover:bg-gray-50"
-                  >
-                    <CalendarDays className="h-4 w-4 text-pf-purple" />
-                    Change schedule
-                  </button>
-
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-xl border border-gray-200 px-4 py-3 text-left text-xs font-medium text-gray-600 hover:bg-gray-50"
-                  >
-                    <UserRound className="h-4 w-4 text-pf-purple" />
-                    Change teacher
-                  </button>
-
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-xl border border-gray-200 px-4 py-3 text-left text-xs font-medium text-gray-600 hover:bg-gray-50"
-                  >
+                  <a href="/admin-finance" className="flex w-full items-center gap-3 rounded-xl border border-gray-200 px-4 py-3 text-xs font-medium text-gray-600 hover:bg-gray-50">
                     <Coins className="h-4 w-4 text-pf-purple" />
                     View payment history
-                  </button>
+                  </a>
 
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 rounded-xl border border-red-100 px-4 py-3 text-left text-xs font-medium text-red-500 hover:bg-red-50"
-                  >
+                  <button type="button" onClick={cancelTutoring} disabled={saving || tutoring.status?.toLowerCase() === "cancelled"} className="flex w-full items-center gap-3 rounded-xl border border-red-100 px-4 py-3 text-left text-xs font-medium text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">
                     <XCircle className="h-4 w-4" />
-                    Suspend tutoring
+                    {saving ? "Cancelling..." : tutoring.status?.toLowerCase() === "cancelled" ? "Tutoring cancelled" : "Cancel tutoring"}
                   </button>
                 </div>
               </SectionCard>
@@ -457,7 +395,7 @@ export default function AdminTutoringDetailsPage() {
               {/* CREATED */}
               <div className="px-1">
                 <p className="text-[10px] text-gray-400">
-                  Tutoring created on {tutoring.createdAt}
+                  Tutoring created on {formatDate(tutoring.created_at)}
                 </p>
               </div>
             </div>
@@ -618,7 +556,6 @@ function ProgressItem({
   label,
   value,
   total,
-  suffix = "",
 }) {
   const percentage = total
     ? Math.round((value / total) * 100)
@@ -633,7 +570,6 @@ function ProgressItem({
 
         <p className="text-xs font-semibold text-pf-purple-dark">
           {value}
-          {suffix}
           {total ? ` / ${total}` : ""}
         </p>
       </div>
@@ -673,5 +609,33 @@ function PaymentRow({ label, value }) {
 /* ========================================================= */
 
 function formatMoney(amount) {
-  return new Intl.NumberFormat("fr-FR").format(amount);
+  return new Intl.NumberFormat("fr-FR").format(Number(amount ?? 0));
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("fr-FR");
+}
+
+function personName(user) {
+  return [user?.first_name, user?.last_name].filter(Boolean).join(" ") || "Name unavailable";
+}
+
+function DetailPageState({ message, isError = false }) {
+  return (
+    <div className="min-h-screen bg-[#FAF9FB] font-sans text-[#302C38]">
+      <SidebarAdmin activeItem="Tutoring" />
+      <main className="lg:ml-64">
+        <header className="flex h-16 items-center border-b border-gray-100 bg-white px-5 sm:px-8">
+          <a href="/admin-tutoring" className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-pf-purple" aria-label="Back to tutoring">
+            <ArrowLeft className="h-5 w-5" />
+          </a>
+        </header>
+        <div className={`mx-auto max-w-7xl px-5 py-12 text-sm ${isError ? "text-red-600" : "text-gray-400"}`} role={isError ? "alert" : "status"}>
+          {message}
+        </div>
+      </main>
+    </div>
+  );
 }
