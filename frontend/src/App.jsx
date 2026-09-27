@@ -127,7 +127,7 @@ const App = () => {
           <Route path="/admin-exams-rewards/:id" element={<AdminExamRewardDetailPage />} />
           <Route path="/admin-disputes/DSP-006" element={<AdminDisputeDetailsPage />} />
           <Route path="/admin-teachers/:id" element={<AdminTeacherDetailsPage />} />
-          <Route path='/admin-tutoring/TUT-004' element={<AdminTutoringDetailsPage />} />
+          <Route path='/admin-tutoring/:id' element={<AdminTutoringDetailsPage />} />
           <Route path='/admin-users/:id' element={<AdminUserDetailsPage/>}/>
         </Route>
       </Routes>

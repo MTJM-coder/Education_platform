@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
   CalendarDays,
@@ -15,114 +15,7 @@ import {
   XCircle,
 } from "lucide-react";
 import SidebarAdmin from "../components/admin/SidebarAdmin";
-
-const tutoringAssignments = [
-  {
-    id: "TUT-001",
-    teacher: "Xavier Ndi",
-    student: "Junior Mbarga",
-    parent: "Marie Mbarga",
-    subject: "Mathematics",
-    level: "Form 3",
-    location: "Bonamoussadi",
-    frequency: "3 sessions / week",
-    rate: "4,000 FCFA / session",
-    sessions: 12,
-    completed: 9,
-    startDate: "02 Sept. 2026",
-    status: "Active",
-  },
-  {
-    id: "TUT-002",
-    teacher: "Marie Acha",
-    student: "Sarah Ngo",
-    parent: "Paul Ngo",
-    subject: "English",
-    level: "Class 6",
-    location: "Akwa",
-    frequency: "2 sessions / week",
-    rate: "3,500 FCFA / session",
-    sessions: 8,
-    completed: 6,
-    startDate: "05 Sept. 2026",
-    status: "Active",
-  },
-  {
-    id: "TUT-003",
-    teacher: "Patrick Bih",
-    student: "Kevin Tamba",
-    parent: "Jean Tamba",
-    subject: "Computer Science",
-    level: "Form 2",
-    location: "Makepe",
-    frequency: "2 sessions / week",
-    rate: "4,500 FCFA / session",
-    sessions: 10,
-    completed: 4,
-    startDate: "09 Sept. 2026",
-    status: "Active",
-  },
-  {
-    id: "TUT-004",
-    teacher: "Daniel Nfor",
-    student: "Ashley Fom",
-    parent: "Grace Fom",
-    subject: "Physics",
-    level: "Form 5",
-    location: "Deido",
-    frequency: "3 sessions / week",
-    rate: "5,000 FCFA / session",
-    sessions: 12,
-    completed: 0,
-    startDate: "20 Sept. 2026",
-    status: "Pending",
-  },
-  {
-    id: "TUT-005",
-    teacher: "Claudine Ngo",
-    student: "David Ekane",
-    parent: "Paul Ekane",
-    subject: "Mathematics",
-    level: "Class 5",
-    location: "Bali",
-    frequency: "2 sessions / week",
-    rate: "3,000 FCFA / session",
-    sessions: 8,
-    completed: 0,
-    startDate: "19 Sept. 2026",
-    status: "Pending",
-  },
-  {
-    id: "TUT-006",
-    teacher: "Jean Tamba",
-    student: "Melissa Etoa",
-    parent: "Rose Etoa",
-    subject: "Biology",
-    level: "Form 4",
-    location: "Bonapriso",
-    frequency: "2 sessions / week",
-    rate: "4,500 FCFA / session",
-    sessions: 8,
-    completed: 7,
-    startDate: "25 Aug. 2026",
-    status: "Completed",
-  },
-  {
-    id: "TUT-007",
-    teacher: "Xavier Ndi",
-    student: "Brenda Fokam",
-    parent: "Alice Fokam",
-    subject: "Mathematics",
-    level: "Form 2",
-    location: "Logpom",
-    frequency: "2 sessions / week",
-    rate: "4,000 FCFA / session",
-    sessions: 10,
-    completed: 3,
-    startDate: "15 Aug. 2026",
-    status: "Cancelled",
-  },
-];
+import { apiFetch } from "../lib/apiClient";
 
 const statusFilters = [
   "All",
@@ -132,42 +25,49 @@ const statusFilters = [
   "Cancelled",
 ];
 
-const subjects = [
-  "All subjects",
-  "Mathematics",
-  "Physics",
-  "English",
-  "Computer Science",
-  "Biology",
-];
-
 export default function AdminTutoringPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [subjectFilter, setSubjectFilter] =
-    useState("All subjects");
+  const [subjectFilter, setSubjectFilter] =useState("All subjects");
   const [openMenu, setOpenMenu] = useState(null);
+  const [tutoringAssignments,setTutoringAssignments]=useState([])
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
+  useEffect(()=>{
+    const fetchTutoring = async ()=>{
+      try{
+        const response = await apiFetch("/admin/assignments")
+        setTutoringAssignments((response?.data ?? []).map(mapAssignment));
+      }catch(error){
+        setError(error.message || "Unable to load assignments.");
+      } finally {
+        setLoading(false);
+      }
+      
+    }
+    fetchTutoring()
+  },[])
   const filteredTutoring = useMemo(() => {
     const query = search.toLowerCase().trim();
 
-    return tutoringAssignments.filter((tutoring) => {
+    return tutoringAssignments.filter((assignment) => {
       const matchesSearch =
         !query ||
-        tutoring.id.toLowerCase().includes(query) ||
-        tutoring.teacher.toLowerCase().includes(query) ||
-        tutoring.student.toLowerCase().includes(query) ||
-        tutoring.parent.toLowerCase().includes(query) ||
-        tutoring.subject.toLowerCase().includes(query) ||
-        tutoring.location.toLowerCase().includes(query);
+        assignment.id.toLowerCase().includes(query) ||
+        assignment.teacher.toLowerCase().includes(query) ||
+        assignment.learner.toLowerCase().includes(query) ||
+        assignment.parent.toLowerCase().includes(query) ||
+        assignment.subject.toLowerCase().includes(query) ||
+        assignment.location.toLowerCase().includes(query);
 
       const matchesStatus =
         statusFilter === "All" ||
-        tutoring.status === statusFilter;
+      assignment.status.toLowerCase() === statusFilter.toLowerCase();
 
       const matchesSubject =
         subjectFilter === "All subjects" ||
-        tutoring.subject === subjectFilter;
+        assignment.subject === subjectFilter;
 
       return (
         matchesSearch &&
@@ -175,29 +75,32 @@ export default function AdminTutoringPage() {
         matchesSubject
       );
     });
-  }, [search, statusFilter, subjectFilter]);
+  }, [tutoringAssignments, search, statusFilter, subjectFilter]);
+
+  const subjectOptions = ["All subjects", ...new Set(tutoringAssignments.map((item) => item.subject).filter(Boolean))];
 
   const activeCount = tutoringAssignments.filter(
-    (item) => item.status === "Active"
+    (item) => item.status.toLowerCase() === "active"
   ).length;
 
   const pendingCount = tutoringAssignments.filter(
-    (item) => item.status === "Pending"
+    (item) => item.status.toLowerCase() === "pending"
   ).length;
 
   const completedCount = tutoringAssignments.filter(
-    (item) => item.status === "Completed"
+    (item) => item.status.toLowerCase() === "completed"
   ).length;
 
   const totalSessions = tutoringAssignments.reduce(
-    (total, item) => total + item.sessions,
-    0
-  );
+    (total, item) => total + (item.sessions ?? 0),
+  0
+);
 
-  const completedSessions = tutoringAssignments.reduce(
-    (total, item) => total + item.completed,
-    0
-  );
+const completedSessions = tutoringAssignments.reduce(
+  (total, item) =>
+    total + (item.completed ?? 0),
+  0
+);
 
   return (
     <div className="min-h-screen bg-[#FAF9FB] font-sans text-[#302C38]">
@@ -358,11 +261,10 @@ export default function AdminTutoringPage() {
                     key={status}
                     type="button"
                     onClick={() => setStatusFilter(status)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                      statusFilter === status
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${statusFilter === status
                         ? "bg-pf-purple text-white"
                         : "bg-[#FAF9FB] text-gray-500 hover:bg-pf-purple-light hover:text-pf-purple"
-                    }`}
+                      }`}
                   >
                     {status}
                   </button>
@@ -378,7 +280,7 @@ export default function AdminTutoringPage() {
                     }
                     className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-600 outline-none focus:border-pf-purple"
                   >
-                    {subjects.map((subject) => (
+                    {subjectOptions.map((subject) => (
                       <option
                         key={subject}
                         value={subject}
@@ -390,6 +292,8 @@ export default function AdminTutoringPage() {
                 </div>
               </div>
             </div>
+
+            {error && <p className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">{error}</p>}
 
             {/* Desktop table */}
             <div className="hidden overflow-x-auto md:block">
@@ -456,7 +360,7 @@ export default function AdminTutoringPage() {
             </div>
 
             {/* Empty state */}
-            {filteredTutoring.length === 0 && (
+            {!loading && filteredTutoring.length === 0 && !error && (
               <div className="py-16 text-center">
                 <BookOpen className="mx-auto h-8 w-8 text-gray-300" />
 
@@ -469,6 +373,8 @@ export default function AdminTutoringPage() {
                 </p>
               </div>
             )}
+
+            {loading && <p className="py-12 text-center text-sm text-gray-400">Loading assignments...</p>}
 
             {/* Footer */}
             {filteredTutoring.length > 0 && (
@@ -530,8 +436,8 @@ function TutoringRow({
   const progress =
     item.sessions > 0
       ? Math.round(
-          (item.completed / item.sessions) * 100
-        )
+        (item.completed / item.sessions) * 100
+      )
       : 0;
 
   return (
@@ -540,17 +446,17 @@ function TutoringRow({
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
           <Avatar
-            name={item.student}
+            name={item?.learner}
             variant="student"
           />
 
           <div>
             <p className="text-xs font-semibold text-pf-purple-dark">
-              {item.student}
+              {item.learner}
             </p>
 
             <p className="mt-1 text-[10px] text-gray-400">
-              {item.id} · {item.level}
+            {item.level}
             </p>
           </div>
         </div>
@@ -559,11 +465,11 @@ function TutoringRow({
       {/* Teacher */}
       <td className="px-4 py-4">
         <p className="text-xs font-medium text-gray-600">
-          {item.teacher}
+          {item.teacher || "—"}
         </p>
 
         <p className="mt-1 text-[10px] text-gray-400">
-          Parent: {item.parent}
+          Parent: {item?.parent}
         </p>
       </td>
 
@@ -658,8 +564,8 @@ function TutoringMobileCard({
   const progress =
     item.sessions > 0
       ? Math.round(
-          (item.completed / item.sessions) * 100
-        )
+        (item.completed / item.sessions) * 100
+      )
       : 0;
 
   return (
@@ -667,7 +573,7 @@ function TutoringMobileCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <Avatar
-            name={item.student}
+            name={item?.learner}
             variant="student"
           />
 
@@ -791,12 +697,10 @@ function MiniInfo({
   );
 }
 
-/* ========================================================= */
-/* AVATAR                                                       */
-/* ========================================================= */
+
 
 function Avatar({ name }) {
-  const initials = name
+  const initials = String(name ?? "")
     .split(" ")
     .map((part) => part[0])
     .join("")
@@ -861,11 +765,10 @@ function ActionMenu({
 }) {
   return (
     <div
-      className={`absolute z-30 w-52 rounded-xl border border-gray-200 bg-white p-1.5 text-left shadow-lg ${
-        mobile
+      className={`absolute z-30 w-52 rounded-xl border border-gray-200 bg-white p-1.5 text-left shadow-lg ${mobile
           ? "right-5 top-16"
           : "right-6 top-12"
-      }`}
+        }`}
     >
       <a
         href={`/admin-tutoring/${item.id}`}
@@ -917,4 +820,36 @@ function ActionMenu({
       )}
     </div>
   );
+}
+
+function mapAssignment(assignment) {
+  const request = assignment.tutoring_request ?? assignment.tutoringRequest ?? {};
+  const learner = request.learner ?? {};
+  const teacher = assignment.teacher?.user ?? {};
+  const learnerUser = learner.user ?? {};
+  const parent = learner.parent_profile ?? learner.parentProfile ?? {};
+  const parentUser = parent.user ?? {};
+  const sessions = assignment.sessions ?? [];
+  const status = String(assignment.status ?? "pending");
+  const preferredTime = [request.preferred_start_time, request.preferred_end_time]
+    .filter(Boolean)
+    .join(" - ");
+
+  return {
+    ...assignment,
+    id: String(assignment.id ?? ""),
+    status: status.charAt(0).toUpperCase() + status.slice(1),
+    learner: [learnerUser.first_name, learnerUser.last_name].filter(Boolean).join(" ") || "Learner",
+    student: [learnerUser.first_name, learnerUser.last_name].filter(Boolean).join(" ") || "Learner",
+    teacher: [teacher.first_name, teacher.last_name].filter(Boolean).join(" ") || "—",
+    parent: [parentUser.first_name, parentUser.last_name].filter(Boolean).join(" ") || parent.address || "—",
+    subject: request.subject?.name ?? "—",
+    level: learner.level?.name ?? "—",
+    location: parent.address ?? "—",
+    frequency: [request.preferred_day, preferredTime].filter(Boolean).join(" · ") || "—",
+    startDate: assignment.created_at ? new Date(assignment.created_at).toLocaleDateString() : "—",
+    sessions: sessions.length,
+    completed: sessions.filter((session) => session.status?.toLowerCase() === "completed").length,
+    rate: assignment.agreed_price ?? "—",
+  };
 }
