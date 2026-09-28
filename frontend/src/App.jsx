@@ -9,7 +9,7 @@ import TeacherSignupPage from './pages/TeacherSignupPage';
 import Register from './pages/SignupRoleChoicePage';
 import StudentSignupPage from './pages/StudentSignupPage';
 import Login from './pages/LoginPage';
-import ParentDashBoardPage from './pages/ParentDashboardPage';
+import ParentDashboardPage from './pages/ParentDashboardPage';
 import SuiviDemandePage from './pages/SuiviDemandePage';
 import AssignmentDetailPage from './pages/AssignmentWorkspacePage';
 import PaymentsPage from './pages/PaymentsPage';
@@ -76,7 +76,7 @@ const App = () => {
         <Route path='/register/student' element={<StudentSignupPage />} />
         <Route path='/login' element={<Login />} />
         <Route element={<ProtectedRoute />}>
-          <Route path='/parent-dashboard' element={<ParentDashBoardPage />} />
+          <Route path='/parent-dashboard' element={<ParentDashboardPage />} />
           <Route path='/student-dashboard' element={<StudentDashboardPage />} />
           <Route path='/student-learning' element={<StudentLearningPage />} />
           <Route path='/student-learning/mathematics' element={<StudentSubjectPage />} />
@@ -125,7 +125,7 @@ const App = () => {
           <Route path='/admin-permissions' element={<AdminPermissionsPage />} />
           <Route path='/admin-settings' element={<AdminSettingsPage />} />
           <Route path="/admin-exams-rewards/:id" element={<AdminExamRewardDetailPage />} />
-          <Route path="/admin-disputes/DSP-006" element={<AdminDisputeDetailsPage />} />
+          <Route path="/admin-disputes/:id" element={<AdminDisputeDetailsPage />} />
           <Route path="/admin-teachers/:id" element={<AdminTeacherDetailsPage />} />
           <Route path='/admin-tutoring/:id' element={<AdminTutoringDetailsPage />} />
           <Route path='/admin-users/:id' element={<AdminUserDetailsPage/>}/>

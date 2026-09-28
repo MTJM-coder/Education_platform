@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownToLine,
   Banknote,
@@ -7,124 +7,16 @@ import {
   ChevronRight,
   Clock3,
   CreditCard,
-  Filter,
   LockKeyhole,
   MoreHorizontal,
   Search,
   Settings2,
   ShieldCheck,
-  TriangleAlert,
   WalletCards,
   XCircle,
 } from "lucide-react";
 import SidebarAdmin from "../components/admin/SidebarAdmin";
-
-const payments = [
-  {
-    id: "PAY-2026-001",
-    parent: "Marie Acha",
-    learner: "Kevin Acha",
-    teacher: "Xavier Ndi",
-    subject: "Mathematics",
-    amount: 25000,
-    commission: 2500,
-    teacherAmount: 22500,
-    method: "Mobile Money",
-    status: "Escrow",
-    date: "18 Sept. 2026",
-  },
-  {
-    id: "PAY-2026-002",
-    parent: "Pauline Ekane",
-    learner: "Sarah Ekane",
-    teacher: "Patrick Bih",
-    subject: "Computer Science",
-    amount: 30000,
-    commission: 3000,
-    teacherAmount: 27000,
-    method: "Bank Transfer",
-    status: "Released",
-    date: "17 Sept. 2026",
-  },
-  {
-    id: "PAY-2026-003",
-    parent: "Claudine Ngo",
-    learner: "David Ngo",
-    teacher: "Marie Acha",
-    subject: "Biology",
-    amount: 20000,
-    commission: 2000,
-    teacherAmount: 18000,
-    method: "Mobile Money",
-    status: "Pending",
-    date: "17 Sept. 2026",
-  },
-  {
-    id: "PAY-2026-004",
-    parent: "John Tamba",
-    learner: "Michael Tamba",
-    teacher: "Daniel Nfor",
-    subject: "English",
-    amount: 15000,
-    commission: 1500,
-    teacherAmount: 13500,
-    method: "Mobile Money",
-    status: "Released",
-    date: "16 Sept. 2026",
-  },
-  {
-    id: "PAY-2026-005",
-    parent: "Sarah Mballa",
-    learner: "Sarah Mballa Jr.",
-    teacher: "Xavier Ndi",
-    subject: "Physics",
-    amount: 35000,
-    commission: 3500,
-    teacherAmount: 31500,
-    method: "Bank Transfer",
-    status: "Escrow",
-    date: "16 Sept. 2026",
-  },
-  {
-    id: "PAY-2026-006",
-    parent: "Daniel Fongang",
-    learner: "Emmanuel Fongang",
-    teacher: "Patrick Bih",
-    subject: "Computer Science",
-    amount: 18000,
-    commission: 1800,
-    teacherAmount: 16200,
-    method: "Mobile Money",
-    status: "Refunded",
-    date: "15 Sept. 2026",
-  },
-  {
-    id: "PAY-2026-007",
-    parent: "Marie Acha",
-    learner: "Kevin Acha",
-    teacher: "Xavier Ndi",
-    subject: "Mathematics",
-    amount: 25000,
-    commission: 2500,
-    teacherAmount: 22500,
-    method: "Mobile Money",
-    status: "Released",
-    date: "14 Sept. 2026",
-  },
-  {
-    id: "PAY-2026-008",
-    parent: "Pauline Ekane",
-    learner: "Sarah Ekane",
-    teacher: "Marie Acha",
-    subject: "Biology",
-    amount: 22000,
-    commission: 2200,
-    teacherAmount: 19800,
-    method: "Mobile Money",
-    status: "Escrow",
-    date: "14 Sept. 2026",
-  },
-];
+import { apiFetch } from "../lib/apiClient";
 
 const statusFilters = [
   "All",
@@ -140,12 +32,75 @@ const methods = [
   "Bank Transfer",
 ];
 
+function normalizePayment(payment) {
+  const teacherUser = payment?.assignment?.teacher?.user ?? payment?.teacher?.user ?? {};
+  const learnerUser = payment?.assignment?.tutoringRequest?.learner?.user ?? payment?.learner?.user ?? {};
+  const parentUser = payment?.assignment?.tutoringRequest?.learner?.parentProfile?.user ?? payment?.parent?.user ?? {};
+  const subject = payment?.assignment?.tutoringRequest?.subject ?? payment?.subject ?? {};
+
+  const amount = Number(payment?.amount ?? 0);
+  const commission = Number(payment?.commission_amount ?? payment?.commission ?? 0);
+  const teacherAmount = Number(payment?.teacher_amount ?? payment?.teacherAmount ?? Math.max(amount - commission, 0));
+
+  const mappedStatus = payment?.escrow_status === "released"
+    ? "Released"
+    : payment?.status === "refunded" || payment?.escrow_status === "refunded"
+      ? "Refunded"
+      : payment?.status === "paid" && payment?.escrow_status === "held"
+        ? "Escrow"
+        : payment?.status === "pending" || payment?.status === "failed"
+          ? "Pending"
+          : String(payment?.status ?? "Pending");
+
+  const mappedMethod = payment?.method === "mobile_money"
+    ? "Mobile Money"
+    : payment?.method === "bank_transfer"
+      ? "Bank Transfer"
+      : payment?.method ?? "Mobile Money";
+
+  return {
+    ...payment,
+    id: payment?.id ?? "PAY-UNKNOWN",
+    amount,
+    commission,
+    teacherAmount,
+    status: mappedStatus,
+    method: mappedMethod,
+    parent: [parentUser?.first_name, parentUser?.last_name].filter(Boolean).join(" ") || "Parent",
+    teacher: [teacherUser?.first_name, teacherUser?.last_name].filter(Boolean).join(" ") || "Teacher",
+    learner: [learnerUser?.first_name, learnerUser?.last_name].filter(Boolean).join(" ") || "Learner",
+    subject: subject?.name || "Tutoring",
+    date: payment?.created_at ? new Date(payment.created_at).toLocaleDateString("fr-FR") : "—",
+  };
+}
+
 export default function AdminPaymentsPage() {
+  const [payments, setPayments] = useState([]);
+  const [commissionRate, setCommissionRate] = useState(10);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [methodFilter, setMethodFilter] =
-    useState("All methods");
+  const [methodFilter, setMethodFilter] = useState("All methods");
   const [openMenu, setOpenMenu] = useState(null);
+
+  const fetchPayments = async () => {
+    try {
+      const [paymentsResponse, commissionResponse] = await Promise.all([
+        apiFetch("/me/payments"),
+        apiFetch("/admin/settings/commission-rate").catch(() => ({ commission_rate: 10 })),
+      ]);
+
+      setPayments((paymentsResponse?.data ?? []).map(normalizePayment));
+      setCommissionRate(Number(commissionResponse?.commission_rate ?? 10));
+      setError("");
+    } catch (fetchError) {
+      setError(fetchError.message || "Error loading payments.");
+    }
+  };
+
+  useEffect(() => {
+    fetchPayments();
+  }, []);
 
   const filteredPayments = useMemo(() => {
     const query = search.toLowerCase().trim();
@@ -153,11 +108,11 @@ export default function AdminPaymentsPage() {
     return payments.filter((payment) => {
       const matchesSearch =
         !query ||
-        payment.id.toLowerCase().includes(query) ||
-        payment.parent.toLowerCase().includes(query) ||
-        payment.learner.toLowerCase().includes(query) ||
-        payment.teacher.toLowerCase().includes(query) ||
-        payment.subject.toLowerCase().includes(query);
+        String(payment.id ?? "").toLowerCase().includes(query) ||
+        String(payment.parent ?? "").toLowerCase().includes(query) ||
+        String(payment.teacher ?? "").toLowerCase().includes(query) ||
+        String(payment.learner ?? "").toLowerCase().includes(query) ||
+        String(payment.subject ?? "").toLowerCase().includes(query);
 
       const matchesStatus =
         statusFilter === "All" ||
@@ -167,31 +122,34 @@ export default function AdminPaymentsPage() {
         methodFilter === "All methods" ||
         payment.method === methodFilter;
 
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesMethod
-      );
+      return matchesSearch && matchesStatus && matchesMethod;
     });
-  }, [search, statusFilter, methodFilter]);
+  }, [payments, search, statusFilter, methodFilter]);
 
-  const totalVolume = payments.reduce(
-    (sum, payment) => sum + payment.amount,
-    0
-  );
+  const totalVolume = payments.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
+  const totalCommission = payments.reduce((sum, payment) => sum + Number(payment.commission ?? 0), 0);
+  const escrowAmount = payments.filter((payment) => payment.status === "Escrow").reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
+  const releasedAmount = payments.filter((payment) => payment.status === "Released").reduce((sum, payment) => sum + Number(payment.teacherAmount ?? 0), 0);
 
-  const totalCommission = payments.reduce(
-    (sum, payment) => sum + payment.commission,
-    0
-  );
+  const handleRelease = async (paymentId) => {
+    try {
+      await apiFetch(`/admin/payments/${paymentId}/release`, { method: "PATCH" });
+      await fetchPayments();
+      setOpenMenu(null);
+    } catch (releaseError) {
+      setError(releaseError.message || "Unable to release payment.");
+    }
+  };
 
-  const escrowAmount = payments
-    .filter((payment) => payment.status === "Escrow")
-    .reduce((sum, payment) => sum + payment.amount, 0);
-
-  const releasedAmount = payments
-    .filter((payment) => payment.status === "Released")
-    .reduce((sum, payment) => sum + payment.teacherAmount, 0);
+  const handleRefund = async (paymentId) => {
+    try {
+      await apiFetch(`/admin/payments/${paymentId}/refund`, { method: "PATCH" });
+      await fetchPayments();
+      setOpenMenu(null);
+    } catch (refundError) {
+      setError(refundError.message || "Unable to refund payment.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#FAF9FB] font-sans text-[#302C38]">
@@ -323,7 +281,7 @@ export default function AdminPaymentsPage() {
                   </p>
 
                   <p className="mt-2 font-serif text-3xl text-pf-purple-dark">
-                    10%
+                    {commissionRate}%
                   </p>
                 </div>
 
@@ -470,6 +428,9 @@ export default function AdminPaymentsPage() {
                       payment={payment}
                       openMenu={openMenu}
                       setOpenMenu={setOpenMenu}
+                      commissionRate={commissionRate}
+                      onRelease={handleRelease}
+                      onRefund={handleRefund}
                     />
                   ))}
                 </tbody>
@@ -484,6 +445,8 @@ export default function AdminPaymentsPage() {
                   payment={payment}
                   openMenu={openMenu}
                   setOpenMenu={setOpenMenu}
+                  onRelease={handleRelease}
+                  onRefund={handleRefund}
                 />
               ))}
             </div>
@@ -592,6 +555,9 @@ function PaymentRow({
   payment,
   openMenu,
   setOpenMenu,
+  commissionRate,
+  onRelease,
+  onRefund,
 }) {
   return (
     <tr className="border-b border-gray-100 last:border-0 hover:bg-[#FCFBFD]">
@@ -631,7 +597,7 @@ function PaymentRow({
         </p>
 
         <p className="mt-1 text-[10px] text-gray-400">
-          10%
+          {commissionRate}%
         </p>
       </td>
 
@@ -668,7 +634,11 @@ function PaymentRow({
         </button>
 
         {openMenu === payment.id && (
-          <PaymentActionMenu payment={payment} />
+          <PaymentActionMenu
+            payment={payment}
+            onRelease={onRelease}
+            onRefund={onRefund}
+          />
         )}
       </td>
     </tr>
@@ -683,6 +653,8 @@ function PaymentMobileCard({
   payment,
   openMenu,
   setOpenMenu,
+  onRelease,
+  onRefund,
 }) {
   return (
     <div className="relative p-5">
@@ -760,6 +732,8 @@ function PaymentMobileCard({
         <PaymentActionMenu
           payment={payment}
           mobile
+          onRelease={onRelease}
+          onRefund={onRefund}
         />
       )}
     </div>
@@ -831,6 +805,8 @@ function PaymentStatus({ status }) {
 function PaymentActionMenu({
   payment,
   mobile = false,
+  onRelease,
+  onRefund,
 }) {
   return (
     <div
@@ -840,38 +816,35 @@ function PaymentActionMenu({
           : "right-6 top-12"
       }`}
     >
-      <a
-        href={`/admin-payments/${payment.id}`}
-        className="flex items-center justify-between rounded-lg px-3 py-2 text-xs text-gray-600 hover:bg-pf-purple-light hover:text-pf-purple"
-      >
-        View transaction
-        <ChevronRight className="h-3.5 w-3.5" />
-      </a>
-
       {payment.status === "Escrow" && (
         <button
           type="button"
-          className="w-full rounded-lg px-3 py-2 text-left text-xs text-green-600 hover:bg-green-50"
+          onClick={() => onRelease?.(payment.id)}
+          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs text-green-600 hover:bg-green-50"
         >
           Release payment
+          <ChevronRight className="h-3.5 w-3.5" />
         </button>
       )}
 
       {payment.status === "Pending" && (
         <button
           type="button"
-          className="w-full rounded-lg px-3 py-2 text-left text-xs text-pf-purple hover:bg-pf-purple-light"
+          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs text-pf-purple hover:bg-pf-purple-light"
         >
           Review payment
+          <ChevronRight className="h-3.5 w-3.5" />
         </button>
       )}
 
       {payment.status !== "Refunded" && (
         <button
           type="button"
-          className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-500 hover:bg-red-50"
+          onClick={() => onRefund?.(payment.id)}
+          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs text-red-500 hover:bg-red-50"
         >
           Issue refund
+          <ChevronRight className="h-3.5 w-3.5" />
         </button>
       )}
     </div>
