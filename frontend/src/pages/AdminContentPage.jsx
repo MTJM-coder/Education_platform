@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
   CheckCircle2,
@@ -15,99 +15,10 @@ import {
   XCircle,
 } from "lucide-react";
 import SidebarAdmin from "../components/admin/SidebarAdmin";
-
-const contents = [
-  {
-    id: 1,
-    title: "Solving Quadratic Equations",
-    type: "Lesson",
-    subject: "Mathematics",
-    level: "Secondary",
-    className: "Form 3",
-    teacher: "Mr. Xavier Ndi",
-    status: "Published",
-    date: "18 Sept. 2026",
-    views: 186,
-  },
-  {
-    id: 2,
-    title: "Introduction to Electricity",
-    type: "Video",
-    subject: "Physics",
-    level: "Secondary",
-    className: "Form 2",
-    teacher: "Mrs. Nfor",
-    status: "Published",
-    date: "17 Sept. 2026",
-    views: 143,
-  },
-  {
-    id: 3,
-    title: "Algebra — Chapter 3 Quiz",
-    type: "Quiz",
-    subject: "Mathematics",
-    level: "Secondary",
-    className: "Form 3",
-    teacher: "Mr. Xavier Ndi",
-    status: "Pending Review",
-    date: "18 Sept. 2026",
-    views: 0,
-  },
-  {
-    id: 4,
-    title: "Writing a Persuasive Essay",
-    type: "Document",
-    subject: "English",
-    level: "Secondary",
-    className: "Form 2",
-    teacher: "Mrs. Acha",
-    status: "Published",
-    date: "16 Sept. 2026",
-    views: 97,
-  },
-  {
-    id: 5,
-    title: "Human Reproduction",
-    type: "Lesson",
-    subject: "Biology",
-    level: "Secondary",
-    className: "Form 4",
-    teacher: "Mr. Bih",
-    status: "Pending Review",
-    date: "15 Sept. 2026",
-    views: 0,
-  },
-  {
-    id: 6,
-    title: "French Grammar Basics",
-    type: "Document",
-    subject: "French",
-    level: "Primary",
-    className: "Class 6",
-    teacher: "Mrs. Mbarga",
-    status: "Draft",
-    date: "14 Sept. 2026",
-    views: 0,
-  },
-  {
-    id: 7,
-    title: "HTML & CSS Fundamentals",
-    type: "Video",
-    subject: "Computer Science",
-    level: "Secondary",
-    className: "Form 1",
-    teacher: "Mr. Bih",
-    status: "Published",
-    date: "12 Sept. 2026",
-    views: 211,
-  },
-];
+import { apiFetch } from "../lib/apiClient";
 
 const typeFilters = [
   "All",
-  "Lessons",
-  "Videos",
-  "Quizzes",
   "Documents",
 ];
 
@@ -115,25 +26,85 @@ const statusFilters = [
   "All statuses",
   "Published",
   "Pending Review",
-  "Draft",
+  "Rejected",
 ];
 
 export default function AdminContentPage() {
+  const [contents, setContents] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
   const [statusFilter, setStatusFilter] =
     useState("All statuses");
   const [openMenu, setOpenMenu] = useState(null);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+  useEffect(() => {
+    async function fetchContent() {
+      try {
+        const response = await apiFetch("/admin/lecture-notes");
+
+        const data = response?.data ?? [];
+
+        setContents(data.map(normalizeContent));
+      } catch (fetchError) {
+        setError(
+          fetchError.message || "Unable to load content."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchContent();
+  }, []);
+
+  const updateContentStatus = async (item, status, reason = "") => {
+    setActionLoadingId(item.id);
+    setError("");
+    try {
+      const response = await apiFetch(`/admin/lecture-notes/${item.id}/validate`, {
+        method: "PATCH",
+        body: JSON.stringify({ status, ...(reason ? { reason } : {}) }),
+      });
+      const updatedContent = response?.data ?? response;
+      setContents((current) => current.map((content) =>
+        content.id === item.id ? normalizeContent({ ...content, ...updatedContent }) : content
+      ));
+      setOpenMenu(null);
+    } catch (actionError) {
+      setError(actionError.message || "Unable to update this content.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const deleteContent = async (item) => {
+    if (!window.confirm(`Delete “${item.title}”? This action cannot be undone.`)) return;
+
+    setActionLoadingId(item.id);
+    setError("");
+    try {
+      await apiFetch(`/admin/lecture-notes/${item.id}`, { method: "DELETE" });
+      setContents((current) => current.filter((content) => content.id !== item.id));
+      setOpenMenu(null);
+    } catch (actionError) {
+      setError(actionError.message || "Unable to delete this content.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   const filteredContent = useMemo(() => {
     const query = search.toLowerCase().trim();
 
     return contents.filter((item) => {
+      const teacherName = `${item.teacher.user.first_name} ${item.teacher.user.last_name}`.trim();
       const matchesSearch =
         !query ||
         item.title.toLowerCase().includes(query) ||
-        item.subject.toLowerCase().includes(query) ||
-        item.teacher.toLowerCase().includes(query);
+        item.subject.name.toLowerCase().includes(query) ||
+        teacherName.toLowerCase().includes(query);
 
       const matchesType =
         typeFilter === "All" ||
@@ -149,7 +120,7 @@ export default function AdminContentPage() {
         matchesStatus
       );
     });
-  }, [search, typeFilter, statusFilter]);
+  }, [contents, search, typeFilter, statusFilter]);
 
   const published = contents.filter(
     (item) => item.status === "Published"
@@ -159,8 +130,8 @@ export default function AdminContentPage() {
     (item) => item.status === "Pending Review"
   ).length;
 
-  const drafts = contents.filter(
-    (item) => item.status === "Draft"
+  const rejected = contents.filter(
+    (item) => item.status === "Rejected"
   ).length;
 
   return (
@@ -242,10 +213,16 @@ export default function AdminContentPage() {
 
             <StatCard
               icon={FileText}
-              label="Drafts"
-              value={drafts}
+              label="Rejected"
+              value={rejected}
             />
           </section>
+
+          {error && (
+            <p role="alert" className="mt-5 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </p>
+          )}
 
           {/* Main content */}
           <section className="mt-7 rounded-2xl border border-gray-200 bg-white">
@@ -288,11 +265,10 @@ export default function AdminContentPage() {
                     key={type}
                     type="button"
                     onClick={() => setTypeFilter(type)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                      typeFilter === type
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${typeFilter === type
                         ? "bg-pf-purple text-white"
                         : "bg-[#FAF9FB] text-gray-500 hover:bg-pf-purple-light hover:text-pf-purple"
-                    }`}
+                      }`}
                   >
                     {type}
                   </button>
@@ -350,9 +326,6 @@ export default function AdminContentPage() {
                       Status
                     </th>
 
-                    <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                      Views
-                    </th>
 
                     <th className="px-6 py-3 text-right text-[10px] font-semibold uppercase tracking-wide text-gray-400">
                       Action
@@ -367,6 +340,10 @@ export default function AdminContentPage() {
                       item={item}
                       openMenu={openMenu}
                       setOpenMenu={setOpenMenu}
+                      actionLoadingId={actionLoadingId}
+                      onApprove={(content) => updateContentStatus(content, "approved")}
+                      onReject={(content, reason) => updateContentStatus(content, "rejected", reason)}
+                      onDelete={deleteContent}
                     />
                   ))}
                 </tbody>
@@ -381,12 +358,20 @@ export default function AdminContentPage() {
                   item={item}
                   openMenu={openMenu}
                   setOpenMenu={setOpenMenu}
+                  actionLoadingId={actionLoadingId}
+                  onApprove={(content) => updateContentStatus(content, "approved")}
+                  onReject={(content, reason) => updateContentStatus(content, "rejected", reason)}
+                  onDelete={deleteContent}
                 />
-              ))}
+              ))}  
             </div>
 
             {/* Empty state */}
-            {filteredContent.length === 0 && (
+            {loading && (
+              <p className="py-12 text-center text-sm text-gray-500">Loading content...</p>
+            )}
+
+            {!loading && !error && filteredContent.length === 0 && (
               <div className="py-16 text-center">
                 <FileText className="mx-auto h-8 w-8 text-gray-300" />
 
@@ -401,7 +386,7 @@ export default function AdminContentPage() {
             )}
 
             {/* Footer */}
-            {filteredContent.length > 0 && (
+            {!loading && filteredContent.length > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-5 py-4 sm:px-6">
                 <p className="text-xs text-gray-400">
                   Showing {filteredContent.length} of{" "}
@@ -422,6 +407,30 @@ export default function AdminContentPage() {
       </main>
     </div>
   );
+}
+
+function normalizeContent(content) {
+  const subject = content?.subject ?? {};
+  const teacher = content?.teacher ?? {};
+  const teacherUser = teacher?.user ?? {};
+  const levels = Array.isArray(subject?.levels) ? subject.levels : [];
+  const statusLabels = {
+    approved: "Published",
+    pending: "Pending Review",
+    rejected: "Rejected",
+  };
+
+  return {
+    ...content,
+    type: "Document",
+    status: statusLabels[content?.status] || content?.status || "Unknown",
+    subject: { ...subject, name: subject?.name || "—" },
+    teacher: { ...teacher, user: teacherUser },
+    teacherName: [teacherUser?.first_name, teacherUser?.last_name].filter(Boolean).join(" ") || "—",
+    level: levels.map((level) => level?.name).filter(Boolean).join(", ") || "—",
+    classrooms: levels.flatMap((level) => level?.classrooms ?? []).map((classroom) => classroom?.name).filter(Boolean).join(", ") || "—",
+   
+  };
 }
 
 /* ========================================================= */
@@ -456,6 +465,10 @@ function ContentRow({
   item,
   openMenu,
   setOpenMenu,
+  actionLoadingId,
+  onApprove,
+  onReject,
+  onDelete,
 }) {
   return (
     <tr className="border-b border-gray-100 last:border-0 hover:bg-[#FCFBFD]">
@@ -469,7 +482,7 @@ function ContentRow({
             </p>
 
             <p className="mt-0.5 text-[10px] text-gray-400">
-              Added {item.date}
+              Added {new Date(item.created_at).toLocaleDateString('fr-FR')}
             </p>
           </div>
         </div>
@@ -483,7 +496,7 @@ function ContentRow({
 
       <td className="px-4 py-4">
         <span className="text-xs text-gray-600">
-          {item.subject}
+          {item.subject.name}
         </span>
       </td>
 
@@ -493,22 +506,18 @@ function ContentRow({
         </p>
 
         <p className="mt-0.5 text-[10px] text-gray-400">
-          {item.className}
+          {item.classrooms}
         </p>
       </td>
 
       <td className="px-4 py-4">
         <span className="text-xs text-gray-600">
-          {item.teacher}
+          {item.teacherName}
         </span>
       </td>
 
       <td className="px-4 py-4">
         <StatusBadge status={item.status} />
-      </td>
-
-      <td className="px-4 py-4 text-xs font-medium text-pf-purple-dark">
-        {item.views}
       </td>
 
       <td className="relative px-6 py-4 text-right">
@@ -525,7 +534,13 @@ function ContentRow({
         </button>
 
         {openMenu === item.id && (
-          <ActionMenu item={item} />
+          <ActionMenu
+            item={item}
+            actionLoading={actionLoadingId === item.id}
+            onApprove={onApprove}
+            onReject={onReject}
+            onDelete={onDelete}
+          />
         )}
       </td>
     </tr>
@@ -540,6 +555,10 @@ function ContentMobileCard({
   item,
   openMenu,
   setOpenMenu,
+  actionLoadingId,
+  onApprove,
+  onReject,
+  onDelete,
 }) {
   return (
     <div className="relative p-5">
@@ -554,7 +573,7 @@ function ContentMobileCard({
               </p>
 
               <p className="mt-1 text-[10px] text-gray-400">
-                {item.type} · {item.subject}
+                {item?.type ?? 'type'} · {item?.subject?.name}
               </p>
             </div>
 
@@ -579,17 +598,12 @@ function ContentMobileCard({
 
             <MiniInfo
               label="Class"
-              value={item.className}
+              value={item.classrooms}
             />
 
             <MiniInfo
               label="Teacher"
-              value={item.teacher}
-            />
-
-            <MiniInfo
-              label="Views"
-              value={item.views}
+              value={item.teacherName}
             />
           </div>
 
@@ -600,7 +614,14 @@ function ContentMobileCard({
       </div>
 
       {openMenu === item.id && (
-        <ActionMenu item={item} mobile />
+        <ActionMenu
+          item={item}
+          mobile
+          actionLoading={actionLoadingId === item.id}
+          onApprove={onApprove}
+          onReject={onReject}
+          onDelete={onDelete}
+        />
       )}
     </div>
   );
@@ -660,14 +681,13 @@ function StatusBadge({ status }) {
     status === "Published"
       ? CheckCircle2
       : status === "Pending Review"
-      ? ClipboardCheck
-      : XCircle;
+        ? ClipboardCheck
+        : XCircle;
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${
-        styles[status] || "bg-gray-100 text-gray-500"
-      }`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${styles[status] || "bg-gray-100 text-gray-500"
+        }`}
     >
       <Icon className="h-3 w-3" />
       {status}
@@ -682,14 +702,31 @@ function StatusBadge({ status }) {
 function ActionMenu({
   item,
   mobile = false,
+  actionLoading = false,
+  onApprove,
+  onReject,
+  onDelete,
 }) {
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [reason, setReason] = useState("");
+  const [reasonError, setReasonError] = useState("");
+
+  const submitRejection = (event) => {
+    event.preventDefault();
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      setReasonError("Enter a reason for rejecting this content.");
+      return;
+    }
+    onReject(item, trimmedReason);
+  };
+
   return (
     <div
-      className={`absolute z-30 w-52 rounded-xl border border-gray-200 bg-white p-1.5 text-left shadow-lg ${
-        mobile
+      className={`absolute z-30 w-64 rounded-xl border border-gray-200 bg-white p-1.5 text-left shadow-lg ${mobile
           ? "right-5 top-16"
           : "right-6 top-12"
-      }`}
+        }`}
     >
       <a
         href={`/admin-content/${item.id}`}
@@ -703,17 +740,45 @@ function ActionMenu({
         <>
           <button
             type="button"
+            disabled={actionLoading}
+            onClick={() => onApprove(item)}
             className="w-full rounded-lg px-3 py-2 text-left text-xs text-green-600 hover:bg-green-50"
           >
-            Approve content
+            {actionLoading ? "Saving..." : "Approve content"}
           </button>
 
-          <button
-            type="button"
-            className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-500 hover:bg-red-50"
-          >
-            Reject content
-          </button>
+          {!showRejectForm ? (
+            <button
+              type="button"
+              disabled={actionLoading}
+              onClick={() => setShowRejectForm(true)}
+              className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-500 hover:bg-red-50 disabled:opacity-50"
+            >
+              Reject content
+            </button>
+          ) : (
+            <form onSubmit={submitRejection} className="space-y-2 p-2">
+              <label htmlFor={`reject-reason-${item.id}`} className="block text-xs font-medium text-gray-600">Rejection reason</label>
+              <textarea
+                id={`reject-reason-${item.id}`}
+                value={reason}
+                onChange={(event) => {
+                  setReason(event.target.value);
+                  setReasonError("");
+                }}
+                maxLength={1000}
+                rows={3}
+                required
+                placeholder="Explain why this content is rejected..."
+                className="w-full resize-y rounded-lg border border-gray-200 px-2.5 py-2 text-xs outline-none focus:border-pf-purple"
+              />
+              {reasonError && <p role="alert" className="text-[10px] text-red-600">{reasonError}</p>}
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowRejectForm(false)} className="rounded-md px-2.5 py-1.5 text-xs text-gray-500 hover:bg-gray-100">Cancel</button>
+                <button type="submit" disabled={actionLoading} className="rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50">{actionLoading ? "Saving..." : "Confirm rejection"}</button>
+              </div>
+            </form>
+          )}
         </>
       )}
 
@@ -726,9 +791,11 @@ function ActionMenu({
 
       <button
         type="button"
-        className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-500 hover:bg-red-50"
+        disabled={actionLoading}
+        onClick={() => onDelete(item)}
+        className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-500 hover:bg-red-50 disabled:opacity-50"
       >
-        Delete content
+        {actionLoading ? "Processing..." : "Delete content"}
       </button>
     </div>
   );

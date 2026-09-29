@@ -53,6 +53,7 @@ import AdminPaymentsPage from './pages/AdminPaymentsPage';
 import AdminTutoringPage from './pages/AdminTutoringPage';
 import AdminDisputesPage from './pages/AdminDisputesPage';
 import AdminContentPage from './pages/AdminContentPage';
+import AdminContentDetailsPage from './pages/AdminContentDetailsPage';
 import AdminExamsRewardsPage from './pages/AdminExamsRewardsPage';
 import AdminAnalyticsPage from './pages/AdminAnalyticsPage';
 import AdminNotificationsPage from './pages/AdminNotificationsPage';
@@ -119,6 +120,7 @@ const App = () => {
           <Route path='/admin-tutoring' element={<AdminTutoringPage />} />
           <Route path='/admin-disputes' element={<AdminDisputesPage />} />
           <Route path='/admin-content' element={<AdminContentPage />} />
+          <Route path='/admin-content/:id' element={<AdminContentDetailsPage/>}/>
           <Route path='/admin-exams-rewards' element={<AdminExamsRewardsPage />} />
           <Route path='/admin-analytics' element={<AdminAnalyticsPage />} />
           <Route path='/admin-notifications' element={<AdminNotificationsPage />} />

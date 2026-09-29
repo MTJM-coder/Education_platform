@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Award,
@@ -20,6 +20,8 @@ import {
   XCircle,
 } from "lucide-react";
 import SidebarAdmin from "../components/admin/SidebarAdmin";
+import { apiFetch } from "../lib/apiClient";
+import { useParams } from "react-router-dom";
 
 const exam = {
   id: 1,
@@ -135,7 +137,22 @@ const participants = [
 export default function AdminExamRewardDetailPage() {
   const [activeTab, setActiveTab] = useState("Overview");
   const [examStatus, setExamStatus] = useState(exam.status);
-
+  // const [exam,setExam]=useState([])
+  const [error,setError]=useState("")
+  const {id} = useParams()
+  useEffect(()=>{
+    const fetchExam = async ()=>{
+      try{
+        const response = apiFetch(`/evaluations/${id}`)
+        // setExam(response.data)
+      }catch(error){
+        setError(error.message)
+      }
+    
+    }
+      fetchExam()
+  },[])
+  
   const completedPercentage = useMemo(() => {
     return Math.round(
       (exam.completed / exam.participants) * 100
