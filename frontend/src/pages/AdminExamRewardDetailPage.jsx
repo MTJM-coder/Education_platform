@@ -4,166 +4,145 @@ import {
   Award,
   BarChart3,
   BookOpen,
-  CalendarDays,
   CheckCircle2,
-  Clock3,
-  Edit3,
-  Eye,
   FileText,
-  GraduationCap,
-  MoreHorizontal,
-  PauseCircle,
-  PlayCircle,
+  ListChecks,
   Target,
   Trophy,
   UsersRound,
-  XCircle,
 } from "lucide-react";
+import { useParams } from "react-router-dom";
 import SidebarAdmin from "../components/admin/SidebarAdmin";
 import { apiFetch } from "../lib/apiClient";
-import { useParams } from "react-router-dom";
 
-const exam = {
-  id: 1,
-  title: "Mathematics — Algebra Assessment",
-  code: "MATH-ALG-03",
-  subject: "Mathematics",
-  level: "Secondary",
-  classes: ["Form 2", "Form 3"],
-  teacher: "Mr. Xavier Ndi",
-  status: "Published",
-  duration: 60,
-  questions: 20,
-  totalMarks: 40,
-  passingScore: 20,
-  scheduledDate: "24 September 2026",
-  scheduledTime: "16:00",
-  participants: 48,
-  completed: 39,
-  pending: 9,
-  averageScore: 27.6,
-  highestScore: 39,
-  lowestScore: 11,
-  reward: {
-    enabled: true,
-    title: "Most Progressive Student",
-    description:
-      "Recognition for the learner who shows the strongest improvement.",
-    prize: "School supplies",
-  },
-};
+/* ========================================================= */
+/* HELPERS                                                     */
+/* ========================================================= */
 
-const questions = [
-  {
-    id: 1,
-    number: 1,
-    question: "Solve: 2x + 6 = 18.",
-    type: "Multiple choice",
-    marks: 2,
-    status: "Published",
-  },
-  {
-    id: 2,
-    number: 2,
-    question: "Factorise: x² + 5x + 6.",
-    type: "Short answer",
-    marks: 2,
-    status: "Published",
-  },
-  {
-    id: 3,
-    number: 3,
-    question: "Solve the quadratic equation x² - 9 = 0.",
-    type: "Multiple choice",
-    marks: 2,
-    status: "Published",
-  },
-  {
-    id: 4,
-    number: 4,
-    question: "Simplify the algebraic expression.",
-    type: "Short answer",
-    marks: 2,
-    status: "Published",
-  },
-  {
-    id: 5,
-    number: 5,
-    question: "Which expression represents a quadratic function?",
-    type: "Multiple choice",
-    marks: 2,
-    status: "Published",
-  },
-];
+// Les noms de champs de Question / User / Learner ne sont pas visibles depuis
+// les fichiers fournis : on essaie plusieurs noms courants. Adaptez ces
+// helpers si vos colonnes s'appellent autrement.
+function getQuestionText(q) {
+  return q.question_text ?? q.text ?? q.content ?? q.question ?? q.title ?? "—";
+}
 
-const participants = [
-  {
-    name: "Brenda M.",
-    className: "Form 2",
-    score: 36,
-    percentage: 90,
-    status: "Completed",
-  },
-  {
-    name: "Daniel N.",
-    className: "Form 3",
-    score: 34,
-    percentage: 85,
-    status: "Completed",
-  },
-  {
-    name: "Kevin T.",
-    className: "Form 2",
-    score: 29,
-    percentage: 72.5,
-    status: "Completed",
-  },
-  {
-    name: "Esther F.",
-    className: "Form 3",
-    score: 24,
-    percentage: 60,
-    status: "Completed",
-  },
-  {
-    name: "Patrick B.",
-    className: "Form 2",
-    score: null,
-    percentage: null,
-    status: "Pending",
-  },
-];
+function getQuestionMarks(q) {
+  const value = q.marks ?? q.points ?? q.max_score ?? null;
+  return value === null || value === undefined ? null : Number(value);
+}
+
+function getPersonName(user) {
+  if (!user) return "—";
+  if (user.name) return user.name;
+  const full = [user.first_name, user.last_name].filter(Boolean).join(" ");
+  return full || user.email || "—";
+}
+
+function getLearnerName(result) {
+  return getPersonName(result.learner?.user);
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatNumber(value) {
+  if (value === null || value === undefined) return "—";
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+/* ========================================================= */
+/* PAGE                                                        */
+/* ========================================================= */
 
 export default function AdminExamRewardDetailPage() {
-  const [activeTab, setActiveTab] = useState("Overview");
-  const [examStatus, setExamStatus] = useState(exam.status);
-  // const [exam,setExam]=useState([])
-  const [error,setError]=useState("")
-  const {id} = useParams()
-  useEffect(()=>{
-    const fetchExam = async ()=>{
-      try{
-        const response = apiFetch(`/evaluations/${id}`)
-        // setExam(response.data)
-      }catch(error){
-        setError(error.message)
-      }
-    
-    }
-      fetchExam()
-  },[])
-  
-  const completedPercentage = useMemo(() => {
-    return Math.round(
-      (exam.completed / exam.participants) * 100
-    );
-  }, []);
+  const { id } = useParams();
 
-  const toggleStatus = () => {
-    setExamStatus((current) =>
-      current === "Published" ? "Paused" : "Published"
-    );
+  const [activeTab, setActiveTab] = useState("Overview");
+  const [evaluation, setEvaluation] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchEvaluation = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await apiFetch(`/evaluations/${id}`);
+        // show() renvoie l'évaluation directement ; on accepte aussi { data }.
+        const payload = response?.data ?? response;
+        if (!cancelled) setEvaluation(payload);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err?.message || "Unable to load this assessment.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchEvaluation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const questions = useMemo(
+    () => evaluation?.questions ?? [],
+    [evaluation]
+  );
+
+  const results = useMemo(
+    () => evaluation?.results ?? [],
+    [evaluation]
+  );
+
+  // Total des points : somme des points des questions, si le champ existe.
+  const totalMarks = useMemo(() => {
+    const marks = questions.map(getQuestionMarks);
+    if (marks.length === 0 || marks.some((m) => m === null)) return null;
+    return marks.reduce((sum, m) => sum + m, 0);
+  }, [questions]);
+
+  const stats = useMemo(() => {
+    const scores = results
+      .map((r) => Number(r.score))
+      .filter((s) => Number.isFinite(s));
+
+    if (scores.length === 0) {
+      return { count: results.length, average: null, highest: null, lowest: null };
+    }
+
+    return {
+      count: results.length,
+      average: scores.reduce((sum, s) => sum + s, 0) / scores.length,
+      highest: Math.max(...scores),
+      lowest: Math.min(...scores),
+    };
+  }, [results]);
+
+  const scoreLabel = (value) => {
+    if (value === null || value === undefined) return "—";
+    return totalMarks
+      ? `${formatNumber(value)}/${formatNumber(totalMarks)}`
+      : formatNumber(value);
   };
+
+  const averagePercent =
+    stats.average !== null && totalMarks
+      ? Math.round((stats.average / totalMarks) * 100)
+      : null;
 
   return (
     <div className="min-h-screen bg-[#FAF9FB] font-sans text-[#302C38]">
@@ -176,6 +155,7 @@ export default function AdminExamRewardDetailPage() {
             <a
               href="/admin-exams-rewards"
               className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-pf-purple"
+              aria-label="Back to exams and rewards"
             >
               <ArrowLeft className="h-5 w-5" />
             </a>
@@ -202,137 +182,129 @@ export default function AdminExamRewardDetailPage() {
         </header>
 
         <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8">
-          {/* Page heading */}
-          <section>
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-pf-purple-light">
-                  <FileText className="h-6 w-6 text-pf-purple" />
-                </div>
+          {loading && (
+            <p className="text-sm text-gray-500">Loading assessment…</p>
+          )}
 
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
+          {!loading && error && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-600"
+            >
+              {error}
+            </div>
+          )}
+
+          {!loading && !error && evaluation && (
+            <>
+              {/* Page heading */}
+              <section>
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-pf-purple-light">
+                    <FileText className="h-6 w-6 text-pf-purple" />
+                  </div>
+
+                  <div>
                     <p className="text-sm font-medium text-pf-purple">
                       ASSESSMENT DETAILS
                     </p>
 
-                    <StatusBadge status={examStatus} />
+                    <h1 className="mt-1 font-serif text-2xl font-medium text-pf-purple-dark sm:text-3xl">
+                      {evaluation.title}
+                    </h1>
+
+                    <p className="mt-2 text-sm text-gray-500">
+                      {evaluation.subject?.name ?? "—"} ·{" "}
+                      {formatDate(evaluation.eval_date)}
+                    </p>
                   </div>
-
-                  <h1 className="mt-1 font-serif text-2xl font-medium text-pf-purple-dark sm:text-3xl">
-                    {exam.title}
-                  </h1>
-
-                  <p className="mt-2 text-sm text-gray-500">
-                    {exam.code} · {exam.subject} · {exam.level}
-                  </p>
                 </div>
+              </section>
+
+              {/* Main stats */}
+              <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                  icon={UsersRound}
+                  label="Results recorded"
+                  value={stats.count}
+                  detail="Learners with a score"
+                />
+
+                <StatCard
+                  icon={Target}
+                  label="Average score"
+                  value={scoreLabel(stats.average)}
+                  detail={
+                    averagePercent !== null
+                      ? `${averagePercent}% average`
+                      : "No score yet"
+                  }
+                />
+
+                <StatCard
+                  icon={Trophy}
+                  label="Highest score"
+                  value={scoreLabel(stats.highest)}
+                  detail="Best performance"
+                />
+
+                <StatCard
+                  icon={ListChecks}
+                  label="Questions"
+                  value={questions.length}
+                  detail={
+                    totalMarks ? `${formatNumber(totalMarks)} marks in total` : "In this assessment"
+                  }
+                />
+              </section>
+
+              {/* Tabs */}
+              <div className="mt-7 flex gap-1 overflow-x-auto border-b border-gray-200">
+                {["Overview", "Questions", "Participants", "Reward"].map(
+                  (tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setActiveTab(tab)}
+                      className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition ${
+                        activeTab === tab
+                          ? "border-pf-purple text-pf-purple"
+                          : "border-transparent text-gray-500 hover:text-pf-purple"
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  )
+                )}
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-medium text-pf-purple-dark hover:bg-gray-50"
-                >
-                  <Edit3 className="h-4 w-4" />
-                  Edit
-                </button>
+              {/* Tab content */}
+              <div className="mt-6">
+                {activeTab === "Overview" && (
+                  <OverviewTab
+                    evaluation={evaluation}
+                    questionCount={questions.length}
+                    totalMarks={totalMarks}
+                    stats={stats}
+                    scoreLabel={scoreLabel}
+                  />
+                )}
 
-                <button
-                  type="button"
-                  onClick={toggleStatus}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                >
-                  {examStatus === "Published" ? (
-                    <>
-                      <PauseCircle className="h-4 w-4" />
-                      Pause
-                    </>
-                  ) : (
-                    <>
-                      <PlayCircle className="h-4 w-4" />
-                      Publish
-                    </>
-                  )}
-                </button>
+                {activeTab === "Questions" && (
+                  <QuestionsTab questions={questions} />
+                )}
+
+                {activeTab === "Participants" && (
+                  <ParticipantsTab
+                    results={results}
+                    totalMarks={totalMarks}
+                  />
+                )}
+
+                {activeTab === "Reward" && <RewardTab />}
               </div>
-            </div>
-          </section>
-
-          {/* Main stats */}
-          <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              icon={UsersRound}
-              label="Participants"
-              value={exam.participants}
-              detail={`${exam.completed} completed`}
-            />
-
-            <StatCard
-              icon={Target}
-              label="Average score"
-              value={`${exam.averageScore}/${exam.totalMarks}`}
-              detail={`${Math.round(
-                (exam.averageScore / exam.totalMarks) * 100
-              )}% average`}
-            />
-
-            <StatCard
-              icon={Trophy}
-              label="Highest score"
-              value={`${exam.highestScore}/${exam.totalMarks}`}
-              detail="Best performance"
-            />
-
-            <StatCard
-              icon={Clock3}
-              label="Duration"
-              value={`${exam.duration} min`}
-              detail={`${exam.questions} questions`}
-            />
-          </section>
-
-          {/* Tabs */}
-          <div className="mt-7 flex gap-1 overflow-x-auto border-b border-gray-200">
-            {["Overview", "Questions", "Participants", "Reward"].map(
-              (tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition ${
-                    activeTab === tab
-                      ? "border-pf-purple text-pf-purple"
-                      : "border-transparent text-gray-500 hover:text-pf-purple"
-                  }`}
-                >
-                  {tab}
-                </button>
-              )
-            )}
-          </div>
-
-          {/* Tab content */}
-          <div className="mt-6">
-            {activeTab === "Overview" && (
-              <OverviewTab
-                exam={exam}
-                completedPercentage={completedPercentage}
-              />
-            )}
-
-            {activeTab === "Questions" && (
-              <QuestionsTab questions={questions} />
-            )}
-
-            {activeTab === "Participants" && (
-              <ParticipantsTab participants={participants} />
-            )}
-
-            {activeTab === "Reward" && (
-              <RewardTab reward={exam.reward} />
-            )}
-          </div>
+            </>
+          )}
         </div>
       </main>
     </div>
@@ -344,187 +316,76 @@ export default function AdminExamRewardDetailPage() {
 /* ========================================================= */
 
 function OverviewTab({
-  exam,
-  completedPercentage,
+  evaluation,
+  questionCount,
+  totalMarks,
+  stats,
+  scoreLabel,
 }) {
+  const levels = evaluation.subject?.levels ?? [];
+  const levelNames = levels.map((level) => level.name).filter(Boolean);
+  const classNames = levels
+    .flatMap((level) => level.classrooms ?? [])
+    .map((classroom) => classroom.name)
+    .filter(Boolean);
+
   return (
     <div className="grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
-      <div className="space-y-5">
-        {/* Exam information */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-pf-purple" />
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-pf-purple" />
 
-            <h2 className="font-serif text-xl text-pf-purple-dark">
-              Assessment information
-            </h2>
-          </div>
+          <h2 className="font-serif text-xl text-pf-purple-dark">
+            Assessment information
+          </h2>
+        </div>
 
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <InfoItem
-              label="Subject"
-              value={exam.subject}
-            />
-
-            <InfoItem
-              label="Level"
-              value={exam.level}
-            />
-
-            <InfoItem
-              label="Classes"
-              value={exam.classes.join(", ")}
-            />
-
-            <InfoItem
-              label="Teacher"
-              value={exam.teacher}
-            />
-
-            <InfoItem
-              label="Date"
-              value={exam.scheduledDate}
-            />
-
-            <InfoItem
-              label="Time"
-              value={exam.scheduledTime}
-            />
-
-            <InfoItem
-              label="Duration"
-              value={`${exam.duration} minutes`}
-            />
-
+        <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          <InfoItem label="Subject" value={evaluation.subject?.name ?? "—"} />
+          <InfoItem label="Date" value={formatDate(evaluation.eval_date)} />
+          <InfoItem
+            label="Levels"
+            value={levelNames.length ? levelNames.join(", ") : "—"}
+          />
+          <InfoItem
+            label="Classes"
+            value={classNames.length ? classNames.join(", ") : "—"}
+          />
+          <InfoItem
+            label="Created by"
+            value={getPersonName(evaluation.creator)}
+          />
+          <InfoItem label="Questions" value={`${questionCount} questions`} />
+          {totalMarks !== null && (
             <InfoItem
               label="Total marks"
-              value={`${exam.totalMarks} marks`}
+              value={`${formatNumber(totalMarks)} marks`}
             />
+          )}
+        </div>
+      </section>
 
-            <InfoItem
-              label="Passing score"
-              value={`${exam.passingScore}/${exam.totalMarks}`}
-            />
+      <section className="rounded-2xl border border-gray-200 bg-white p-5">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-pf-purple" />
 
-            <InfoItem
-              label="Questions"
-              value={`${exam.questions} questions`}
-            />
-          </div>
-        </section>
+          <h2 className="font-serif text-lg text-pf-purple-dark">
+            Performance
+          </h2>
+        </div>
 
-        {/* Progress */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-serif text-xl text-pf-purple-dark">
-                Participation
-              </h2>
-
-              <p className="mt-1 text-sm text-gray-500">
-                Learner completion progress.
-              </p>
-            </div>
-
-            <UsersRound className="h-5 w-5 text-pf-purple" />
-          </div>
-
-          <div className="mt-6">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">
-                Completed
-              </span>
-
-              <span className="font-semibold text-pf-purple-dark">
-                {exam.completed}/{exam.participants}
-              </span>
-            </div>
-
-            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-gray-100">
-              <div
-                className="h-full rounded-full bg-pf-purple"
-                style={{
-                  width: `${completedPercentage}%`,
-                }}
-              />
-            </div>
-
-            <div className="mt-3 flex justify-between text-xs text-gray-400">
-              <span>
-                {completedPercentage}% completed
-              </span>
-
-              <span>
-                {exam.pending} pending
-              </span>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {/* Right column */}
-      <div className="space-y-5">
-        {/* Performance */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-5">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-pf-purple" />
-
-            <h2 className="font-serif text-lg text-pf-purple-dark">
-              Performance
-            </h2>
-          </div>
-
-          <div className="mt-5 space-y-4">
-            <PerformanceRow
-              label="Average"
-              value={`${exam.averageScore}/${exam.totalMarks}`}
-            />
-
-            <PerformanceRow
-              label="Highest"
-              value={`${exam.highestScore}/${exam.totalMarks}`}
-            />
-
-            <PerformanceRow
-              label="Lowest"
-              value={`${exam.lowestScore}/${exam.totalMarks}`}
-            />
-          </div>
-        </section>
-
-        {/* Reward preview */}
-        <section className="rounded-2xl bg-pf-purple p-5 text-white">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-medium tracking-wide text-purple-200">
-                REWARD
-              </p>
-
-              <h2 className="mt-2 font-serif text-xl">
-                {exam.reward.title}
-              </h2>
-            </div>
-
-            <div className="rounded-lg bg-white/15 p-2.5">
-              <Award className="h-5 w-5" />
-            </div>
-          </div>
-
-          <p className="mt-4 text-sm leading-6 text-purple-100">
-            {exam.reward.description}
+        {stats.count === 0 ? (
+          <p className="mt-5 text-sm text-gray-500">
+            No result has been recorded for this assessment yet.
           </p>
-
-          <div className="mt-4 rounded-lg bg-white/10 p-3">
-            <p className="text-[10px] uppercase tracking-wide text-purple-200">
-              Prize
-            </p>
-
-            <p className="mt-1 text-sm font-semibold">
-              {exam.reward.prize}
-            </p>
+        ) : (
+          <div className="mt-5 space-y-4">
+            <PerformanceRow label="Average" value={scoreLabel(stats.average)} />
+            <PerformanceRow label="Highest" value={scoreLabel(stats.highest)} />
+            <PerformanceRow label="Lowest" value={scoreLabel(stats.lowest)} />
           </div>
-        </section>
-      </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -536,65 +397,53 @@ function OverviewTab({
 function QuestionsTab({ questions }) {
   return (
     <section className="rounded-2xl border border-gray-200 bg-white">
-      <div className="flex flex-col gap-3 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-        <div>
-          <h2 className="font-serif text-xl text-pf-purple-dark">
-            Questions
-          </h2>
+      <div className="border-b border-gray-100 p-5 sm:p-6">
+        <h2 className="font-serif text-xl text-pf-purple-dark">Questions</h2>
 
-          <p className="mt-1 text-sm text-gray-500">
-            Questions included in this assessment.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-3.5 py-2 text-xs font-semibold text-pf-purple hover:bg-pf-purple-light"
-        >
-          <Edit3 className="h-4 w-4" />
-          Edit questions
-        </button>
+        <p className="mt-1 text-sm text-gray-500">
+          Questions included in this assessment.
+        </p>
       </div>
 
-      <div className="divide-y divide-gray-100">
-        {questions.map((question) => (
-          <div
-            key={question.id}
-            className="flex items-start gap-4 p-5"
-          >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pf-purple-light text-xs font-semibold text-pf-purple">
-              {question.number}
-            </div>
+      {questions.length === 0 ? (
+        <p className="p-5 text-sm text-gray-500 sm:p-6">
+          No question has been added to this assessment yet.
+        </p>
+      ) : (
+        <div className="divide-y divide-gray-100">
+          {questions.map((question, index) => {
+            const marks = getQuestionMarks(question);
 
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-pf-purple-dark">
-                {question.question}
-              </p>
+            return (
+              <div key={question.id} className="flex items-start gap-4 p-5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pf-purple-light text-xs font-semibold text-pf-purple">
+                  {question.number ?? index + 1}
+                </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[10px] text-gray-500">
-                  {question.type}
-                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-pf-purple-dark">
+                    {getQuestionText(question)}
+                  </p>
 
-                <span className="text-[10px] text-gray-400">
-                  {question.marks} marks
-                </span>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {question.type && (
+                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[10px] text-gray-500">
+                        {question.type}
+                      </span>
+                    )}
+
+                    {marks !== null && (
+                      <span className="text-[10px] text-gray-400">
+                        {formatNumber(marks)} marks
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-pf-green" />
-          </div>
-        ))}
-      </div>
-
-      <div className="border-t border-gray-100 px-5 py-4 sm:px-6">
-        <button
-          type="button"
-          className="text-xs font-semibold text-pf-purple hover:underline"
-        >
-          View all questions →
-        </button>
-      </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
@@ -603,7 +452,24 @@ function QuestionsTab({ questions }) {
 /* PARTICIPANTS                                                */
 /* ========================================================= */
 
-function ParticipantsTab({ participants }) {
+function ParticipantsTab({ results, totalMarks }) {
+  const rows = results.map((result) => {
+    const score = Number(result.score);
+    const hasScore = Number.isFinite(score);
+
+    return {
+      id: result.id,
+      name: getLearnerName(result),
+      className: result.learner?.classroom?.name ?? "—",
+      score: hasScore ? score : null,
+      percentage:
+        hasScore && totalMarks
+          ? Math.round((score / totalMarks) * 1000) / 10
+          : null,
+      grade: result.grade ?? null,
+    };
+  });
+
   return (
     <section className="rounded-2xl border border-gray-200 bg-white">
       <div className="border-b border-gray-100 p-5 sm:p-6">
@@ -612,270 +478,135 @@ function ParticipantsTab({ participants }) {
         </h2>
 
         <p className="mt-1 text-sm text-gray-500">
-          Learners registered for this assessment.
+          Learners with a recorded result for this assessment.
         </p>
       </div>
 
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[700px]">
-          <thead>
-            <tr className="border-b border-gray-100 bg-[#FCFBFD] text-left">
-              <th className="px-6 py-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                Learner
-              </th>
+      {rows.length === 0 ? (
+        <p className="p-5 text-sm text-gray-500 sm:p-6">
+          No result has been recorded yet.
+        </p>
+      ) : (
+        <>
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[600px]">
+              <thead>
+                <tr className="border-b border-gray-100 bg-[#FCFBFD] text-left">
+                  <Th className="px-6">Learner</Th>
+                  <Th>Class</Th>
+                  <Th>Score</Th>
+                  <Th>Percentage</Th>
+                  <Th className="px-6">Grade</Th>
+                </tr>
+              </thead>
 
-              <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                Class
-              </th>
+              <tbody>
+                {rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-gray-100 last:border-0"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={row.name} />
+                        <span className="text-sm font-medium text-pf-purple-dark">
+                          {row.name}
+                        </span>
+                      </div>
+                    </td>
 
-              <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                Score
-              </th>
+                    <td className="px-4 py-4 text-xs text-gray-500">
+                      {row.className}
+                    </td>
 
-              <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                Percentage
-              </th>
+                    <td className="px-4 py-4 text-xs font-semibold text-pf-purple-dark">
+                      {row.score !== null
+                        ? totalMarks
+                          ? `${formatNumber(row.score)}/${formatNumber(totalMarks)}`
+                          : formatNumber(row.score)
+                        : "—"}
+                    </td>
 
-              <th className="px-6 py-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                Status
-              </th>
+                    <td className="px-4 py-4 text-xs text-gray-500">
+                      {row.percentage !== null ? `${row.percentage}%` : "—"}
+                    </td>
 
-              <th className="px-6 py-3" />
-            </tr>
-          </thead>
+                    <td className="px-6 py-4 text-xs text-gray-500">
+                      {row.grade ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-          <tbody>
-            {participants.map((participant) => (
-              <ParticipantRow
-                key={participant.name}
-                participant={participant}
-              />
+          <div className="divide-y divide-gray-100 md:hidden">
+            {rows.map((row) => (
+              <div key={row.id} className="flex items-center gap-3 p-5">
+                <Avatar name={row.name} />
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-pf-purple-dark">
+                    {row.name}
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-400">{row.className}</p>
+                </div>
+
+                <div className="text-right">
+                  <p className="text-xs font-semibold text-pf-purple-dark">
+                    {row.score !== null
+                      ? totalMarks
+                        ? `${formatNumber(row.score)}/${formatNumber(totalMarks)}`
+                        : formatNumber(row.score)
+                      : "—"}
+                  </p>
+
+                  {row.grade && (
+                    <p className="mt-1 text-[10px] text-gray-400">
+                      {row.grade}
+                    </p>
+                  )}
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
 
-      <div className="divide-y divide-gray-100 md:hidden">
-        {participants.map((participant) => (
-          <ParticipantMobileCard
-            key={participant.name}
-            participant={participant}
-          />
-        ))}
+/* ========================================================= */
+/* REWARD (placeholder — module Récompenses pas encore codé)   */
+/* ========================================================= */
+
+function RewardTab() {
+  return (
+    <section className="rounded-2xl border border-gray-200 bg-white p-6">
+      <div className="flex items-start gap-4">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-pf-purple-light">
+          <Award className="h-5 w-5 text-pf-purple" />
+        </div>
+
+        <div>
+          <h2 className="font-serif text-xl text-pf-purple-dark">Rewards</h2>
+
+          <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
+            Rewards are not available yet. This tab will show the reward linked
+            to this assessment once the rewards module is built.
+          </p>
+        </div>
       </div>
     </section>
   );
 }
 
-function ParticipantRow({ participant }) {
-  return (
-    <tr className="border-b border-gray-100 last:border-0">
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-pf-purple-light text-xs font-semibold text-pf-purple">
-            {participant.name
-              .split(" ")
-              .map((part) => part[0])
-              .join("")
-              .slice(0, 2)}
-          </div>
-
-          <span className="text-sm font-medium text-pf-purple-dark">
-            {participant.name}
-          </span>
-        </div>
-      </td>
-
-      <td className="px-4 py-4 text-xs text-gray-500">
-        {participant.className}
-      </td>
-
-      <td className="px-4 py-4 text-xs font-semibold text-pf-purple-dark">
-        {participant.score !== null
-          ? `${participant.score}/40`
-          : "—"}
-      </td>
-
-      <td className="px-4 py-4 text-xs text-gray-500">
-        {participant.percentage !== null
-          ? `${participant.percentage}%`
-          : "—"}
-      </td>
-
-      <td className="px-6 py-4">
-        <ParticipantStatus
-          status={participant.status}
-        />
-      </td>
-
-      <td className="px-6 py-4 text-right">
-        <button
-          type="button"
-          className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-pf-purple"
-        >
-          <Eye className="h-4 w-4" />
-        </button>
-      </td>
-    </tr>
-  );
-}
-
-function ParticipantMobileCard({ participant }) {
-  return (
-    <div className="flex items-center gap-3 p-5">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pf-purple-light text-xs font-semibold text-pf-purple">
-        {participant.name
-          .split(" ")
-          .map((part) => part[0])
-          .join("")
-          .slice(0, 2)}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-pf-purple-dark">
-          {participant.name}
-        </p>
-
-        <p className="mt-1 text-xs text-gray-400">
-          {participant.className}
-        </p>
-
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-xs font-semibold text-pf-purple-dark">
-            {participant.score !== null
-              ? `${participant.score}/40`
-              : "Pending"}
-          </span>
-
-          {participant.percentage !== null && (
-            <span className="text-[10px] text-gray-400">
-              {participant.percentage}%
-            </span>
-          )}
-        </div>
-      </div>
-
-      <ParticipantStatus
-        status={participant.status}
-      />
-    </div>
-  );
-}
-
 /* ========================================================= */
-/* REWARD                                                      */
+/* SMALL COMPONENTS                                            */
 /* ========================================================= */
 
-function RewardTab({ reward }) {
-  return (
-    <div className="grid gap-5 xl:grid-cols-[1fr_0.7fr]">
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-pf-purple">
-              REWARD CONFIGURATION
-            </p>
-
-            <h2 className="mt-1 font-serif text-2xl text-pf-purple-dark">
-              {reward.title}
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              {reward.description}
-            </p>
-          </div>
-
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-pf-purple-light">
-            <Award className="h-5 w-5 text-pf-purple" />
-          </div>
-        </div>
-
-        <div className="mt-7 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-gray-100 bg-[#FAF9FB] p-4">
-            <p className="text-[10px] uppercase tracking-wide text-gray-400">
-              Reward type
-            </p>
-
-            <p className="mt-2 text-sm font-semibold text-pf-purple-dark">
-              Most Progressive Student
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-gray-100 bg-[#FAF9FB] p-4">
-            <p className="text-[10px] uppercase tracking-wide text-gray-400">
-              Prize
-            </p>
-
-            <p className="mt-2 text-sm font-semibold text-pf-purple-dark">
-              {reward.prize}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 rounded-xl border border-green-100 bg-green-50 p-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
-
-            <div>
-              <p className="text-sm font-medium text-green-700">
-                Reward enabled
-              </p>
-
-              <p className="mt-1 text-xs leading-5 text-green-600">
-                The reward will be considered when reviewing
-                learner progress and performance.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="mt-6 inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-xs font-semibold text-pf-purple-dark hover:bg-gray-50"
-        >
-          <Edit3 className="h-4 w-4" />
-          Edit reward
-        </button>
-      </section>
-
-      <section className="rounded-2xl bg-pf-purple p-6 text-white">
-        <Trophy className="h-7 w-7" />
-
-        <h2 className="mt-5 font-serif text-xl">
-          Reward criteria
-        </h2>
-
-        <ul className="mt-4 space-y-3 text-sm text-purple-100">
-          <li className="flex gap-2">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            Improvement compared with previous performance.
-          </li>
-
-          <li className="flex gap-2">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            Assessment participation and completion.
-          </li>
-
-          <li className="flex gap-2">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            Consistency of learning progress.
-          </li>
-        </ul>
-      </section>
-    </div>
-  );
-}
-
-/* ========================================================= */
-/* COMPONENTS                                                  */
-/* ========================================================= */
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  detail,
-}) {
+function StatCard({ icon: Icon, label, value, detail }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5">
       <div className="flex items-center justify-between">
@@ -883,18 +614,11 @@ function StatCard({
           <Icon className="h-5 w-5 text-pf-purple" />
         </div>
 
-        <span className="font-serif text-xl text-pf-purple-dark">
-          {value}
-        </span>
+        <span className="font-serif text-xl text-pf-purple-dark">{value}</span>
       </div>
 
-      <p className="mt-4 text-xs font-medium text-gray-500">
-        {label}
-      </p>
-
-      <p className="mt-1 text-[10px] text-gray-400">
-        {detail}
-      </p>
+      <p className="mt-4 text-xs font-medium text-gray-500">{label}</p>
+      <p className="mt-1 text-[10px] text-gray-400">{detail}</p>
     </div>
   );
 }
@@ -906,9 +630,7 @@ function InfoItem({ label, value }) {
         {label}
       </p>
 
-      <p className="mt-1 text-sm font-medium text-pf-purple-dark">
-        {value}
-      </p>
+      <p className="mt-1 text-sm font-medium text-pf-purple-dark">{value}</p>
     </div>
   );
 }
@@ -916,57 +638,37 @@ function InfoItem({ label, value }) {
 function PerformanceRow({ label, value }) {
   return (
     <div className="flex items-center justify-between border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-      <span className="text-xs text-gray-500">
-        {label}
-      </span>
-
-      <span className="text-sm font-semibold text-pf-purple-dark">
-        {value}
-      </span>
+      <span className="text-xs text-gray-500">{label}</span>
+      <span className="text-sm font-semibold text-pf-purple-dark">{value}</span>
     </div>
   );
 }
 
-function StatusBadge({ status }) {
-  const published = status === "Published";
-
+function Th({ children, className = "px-4" }) {
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${
-        published
-          ? "bg-green-50 text-green-600"
-          : "bg-orange-50 text-orange-600"
-      }`}
+    <th
+      className={`${className} py-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400`}
     >
-      {published ? (
-        <CheckCircle2 className="h-3 w-3" />
-      ) : (
-        <PauseCircle className="h-3 w-3" />
-      )}
-
-      {status}
-    </span>
+      {children}
+    </th>
   );
 }
 
-function ParticipantStatus({ status }) {
-  const completed = status === "Completed";
+function Avatar({ name }) {
+  const initials =
+    name === "—"
+      ? "?"
+      : name
+          .split(" ")
+          .filter(Boolean)
+          .map((part) => part[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase();
 
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${
-        completed
-          ? "bg-green-50 text-green-600"
-          : "bg-orange-50 text-orange-600"
-      }`}
-    >
-      {completed ? (
-        <CheckCircle2 className="h-3 w-3" />
-      ) : (
-        <Clock3 className="h-3 w-3" />
-      )}
-
-      {status}
-    </span>
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pf-purple-light text-xs font-semibold text-pf-purple">
+      {initials}
+    </div>
   );
 }

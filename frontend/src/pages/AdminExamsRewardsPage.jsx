@@ -138,6 +138,7 @@ function parseApiDate(value) {
 }
 
 export default function AdminExamsRewardsPage() {
+  const [activeTab, setActiveTab] = useState("overview");
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -184,7 +185,7 @@ export default function AdminExamsRewardsPage() {
 
   return (
     <div className="min-h-screen bg-[#FAF9FB] font-sans text-[#302C38]">
-      <SidebarAdmin activeItem="Exams" />
+      <SidebarAdmin activeItem="Exams & Rewards" />
 
       <main className="lg:ml-64">
         {/* Header */}
