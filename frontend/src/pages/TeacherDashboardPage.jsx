@@ -13,6 +13,8 @@ import {
   MapPin
 } from "lucide-react";
 import TeacherSidebar from "../components/teacher/TeacherSidebar";
+import { useEffect, useState } from "react";
+import { apiFetch } from "../lib/apiClient";
 
 const upcomingLessons = [
   {
@@ -56,9 +58,47 @@ const recentReviews = [
     comment:
       "Excellent communication and always punctual.",
   },
+
+
 ];
 
+const calculateAverageRating = (reviews) => {
+  if (!reviews || reviews.length === 0) return 0;
+
+  const total = reviews.reduce((acc, curr) => acc + curr.rating, 0);
+  return (total / reviews.length).toFixed(1); // Arrondi à 1 décimale (ex: 4.5)
+};
+
+
+
 export default function TeacherDashboardPage() {
+  const [lessons, setLessons] = useState([])
+  const [reviews, setReviews] = useState([])
+  const [error, setError] = useState("")
+  const [assignment,setAssignment]=useState([])
+  const [earning,setEarning] = useState([])
+  const [me,setMe]=useState([])
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const sessionResponse = await apiFetch('/me/sessions?upcoming=1')
+        const reviewResponse = await apiFetch('/me/reviews')
+        const assignmentResponse = await apiFetch('/me/assignments')
+        const meResponse = await apiFetch("/auth/me")
+        const earningResponse = await apiFetch("/me/earnings")
+        setReviews(reviewResponse.data)
+        setLessons(sessionResponse.data)
+        setAssignment(assignmentResponse.data)
+        setEarning(earningResponse)
+        setMe(meResponse.data)
+      } catch (error) {
+        setError(message.error)
+      }
+
+    }
+    fetch()
+  }, [])
+
   return (
     <div className="min-h-screen bg-[#FAFAFC]">
       <TeacherSidebar activeItem="Dashboard" />
@@ -98,28 +138,28 @@ export default function TeacherDashboardPage() {
             <StatCard
               icon={UsersRound}
               label="My Students"
-              value="8"
+              value={assignment.length}
               description="Currently assigned"
             />
 
             <StatCard
               icon={CalendarDays}
               label="Upcoming Lessons"
-              value="3"
+              value={lessons.length}
               description="Next 7 days"
             />
 
             <StatCard
               icon={Star}
               label="My Rating"
-              value="4.7"
-              description="From 32 reviews"
+              value={calculateAverageRating(reviews)}
+              description={`from ${reviews.length} reviews`}
             />
 
             <StatCard
               icon={Coins}
               label="Available Balance"
-              value="45,000 FCFA"
+              value={`${me?.balance} FCFA`}
               description="Ready for withdrawal"
             />
           </section>
@@ -135,7 +175,7 @@ export default function TeacherDashboardPage() {
                   </p>
 
                   <h3 className="mt-1 text-lg font-semibold text-pf-purple-dark">
-                    Senior Teacher
+                    {me?.rank??""}
                   </h3>
                 </div>
 
@@ -147,7 +187,7 @@ export default function TeacherDashboardPage() {
               <div className="mt-5 flex items-center justify-between">
                 <div>
                   <p className="text-2xl font-bold text-pf-purple-dark">
-                    ⭐ 3
+                    ⭐ {me?.stars??" "}
                   </p>
 
                   <p className="mt-1 text-xs text-gray-400">
@@ -157,7 +197,7 @@ export default function TeacherDashboardPage() {
 
                 <div className="text-right">
                   <p className="text-lg font-semibold text-pf-purple-dark">
-                    720
+                    {me?.rank_points??" "}
                   </p>
 
                   <p className="text-xs text-gray-400">Points</p>
@@ -167,16 +207,16 @@ export default function TeacherDashboardPage() {
               <div className="mt-5">
                 <div className="mb-2 flex justify-between text-xs">
                   <span className="text-gray-500">
-                    Progress to Head Teacher
+                    Progress to senior Teacher
                   </span>
 
-                  <span className="font-medium text-pf-purple">82%</span>
+                  <span className="font-medium text-pf-purple">{`${me.rank_points/100}%`}</span>
                 </div>
 
                 <div className="h-2 overflow-hidden rounded-full bg-gray-100">
                   <div
                     className="h-full rounded-full bg-pf-purple"
-                    style={{ width: "82%" }}
+                    style={{ width: `${me.rank_points/100}%` }}
                   />
                 </div>
               </div>
@@ -209,25 +249,25 @@ export default function TeacherDashboardPage() {
               </div>
 
               <p className="mt-5 text-2xl font-bold text-pf-purple-dark">
-                125,000 FCFA
+                {earning?.this_month} FCFA
               </p>
 
               <p className="mt-1 text-xs text-gray-400">
-                +18% compared to last month
+                {earning?.percent_change}% compared to last month
               </p>
 
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-gray-50 p-3">
                   <p className="text-xs text-gray-400">In escrow</p>
                   <p className="mt-1 font-semibold text-pf-purple-dark">
-                    25,000
+                    {earning?.in_escrow}
                   </p>
                 </div>
 
                 <div className="rounded-lg bg-gray-50 p-3">
                   <p className="text-xs text-gray-400">Current rate</p>
                   <p className="mt-1 font-semibold text-pf-purple-dark">
-                    3,500/h
+                    {earning?.current_rate}/h
                   </p>
                 </div>
               </div>
@@ -303,7 +343,7 @@ export default function TeacherDashboardPage() {
               </div>
 
               <div className="divide-y divide-gray-100">
-                {upcomingLessons.map((lesson) => (
+                {lessons.map((lesson) => (
                   <div
                     key={lesson.id}
                     className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
@@ -315,27 +355,37 @@ export default function TeacherDashboardPage() {
 
                       <div>
                         <p className="font-medium text-pf-purple-dark">
-                          {lesson.subject}
+                          {lesson?.assignment?.tutoring_request?.subject?.name}
                         </p>
 
                         <p className="mt-0.5 text-sm text-gray-500">
-                          {lesson.student}
+                          {(() => {
+                            const learner = lesson?.assignment?.tutoring_request?.learner;
+                            const targetUser = learner?.user || learner?.parent_profile?.user;
+
+                            if (!targetUser) return 'Nom indisponible';
+
+                            const initial = targetUser.first_name ? `${targetUser.first_name.charAt(0).toUpperCase()}.` : '';
+                            const lastName = targetUser.last_name || '';
+
+                            return `${lastName} ${initial}`.trim();
+                          })()}
                         </p>
 
                         <p className="mt-1 text-xs text-gray-400">
-                          <MapPin className="inline mr-4 text-xs"></MapPin> {lesson.location}
+                          <MapPin className="inline mr-4 text-xs"></MapPin> {lesson?.location}
                         </p>
                       </div>
                     </div>
 
                     <div className="sm:text-right">
                       <p className="text-sm font-medium text-pf-purple-dark">
-                        {lesson.date}
+                        {new Date(lesson?.session_date).toLocaleDateString("fr-FR")}
                       </p>
 
                       <p className="mt-1 flex items-center gap-1 text-xs text-gray-400 sm:justify-end">
                         <Clock3 className="h-3.5 w-3.5" />
-                        {lesson.time}
+                        {lesson?.start_time}
                       </p>
                     </div>
                   </div>
@@ -367,11 +417,11 @@ export default function TeacherDashboardPage() {
               </div>
 
               <div className="divide-y divide-gray-100">
-                {recentReviews.map((review) => (
+                {reviews.slice(0,3).map((review) => (
                   <div key={review.id} className="p-5">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-pf-purple-dark">
-                        {review.parent}
+                        {"user XXXX"}
                       </p>
 
                       <div className="flex gap-0.5">
