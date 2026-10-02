@@ -268,10 +268,6 @@ export default function TeacherAssignmentsPage() {
         <div className="p-6 lg:p-8">
           {/* Intro */}
           <section className="mb-7">
-            <h2 className="font-serif text-2xl font-semibold text-pf-purple-dark">
-              Teaching Assignments
-            </h2>
-
             <p className="mt-1 text-sm text-gray-500">
               Follow the status, agreed price and requested schedule of each
               assignment.
