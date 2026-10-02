@@ -1,8 +1,8 @@
 import {
   BookOpen,
+  Banknote,
   CalendarDays,
   CheckCircle2,
-  ChevronRight,
   Clock3,
   FileText,
   MapPin,
@@ -11,88 +11,239 @@ import {
   UsersRound,
   XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import TeacherSidebar from "../components/teacher/TeacherSidebar";
+import { apiFetch } from "../lib/apiClient";
 
-const assignments = [
-  {
-    id: "ASG-001",
-    student: "Junior D.",
-    className: "Form 4",
-    subject: "Mathematics",
-    location: "Bonamoussadi",
-    schedule: "Mon & Wed · 16:00 - 17:30",
-    rate: "3,500 FCFA / hour",
-    startDate: "Sep 8, 2026",
-    status: "Active",
-  },
-  {
-    id: "ASG-002",
-    student: "Sarah M.",
-    className: "Class 6",
-    subject: "English",
-    location: "Makepe",
-    schedule: "Tue & Thu · 14:00 - 15:30",
-    rate: "3,000 FCFA / hour",
-    startDate: "Sep 10, 2026",
-    status: "Active",
-  },
-  {
-    id: "ASG-003",
-    student: "David N.",
-    className: "Lower Sixth",
-    subject: "Physics",
-    location: "Deido",
-    schedule: "Friday · 17:00 - 18:30",
-    rate: "4,000 FCFA / hour",
-    startDate: "Sep 15, 2026",
-    status: "Active",
-  },
-  {
-    id: "ASG-004",
-    student: "Grace T.",
-    className: "Form 3",
-    subject: "Mathematics",
-    location: "Akwa",
-    schedule: "Saturday · 10:00 - 12:00",
-    rate: "3,500 FCFA / hour",
-    startDate: "Sep 18, 2026",
-    status: "Pending",
-  },
-  {
-    id: "ASG-005",
-    student: "Michael E.",
-    className: "Upper Sixth",
-    subject: "Physics",
-    location: "Bonapriso",
-    schedule: "Wed & Sat · 16:30 - 18:00",
-    rate: "4,000 FCFA / hour",
-    startDate: "Aug 25, 2026",
-    status: "Completed",
-  },
+/* ========================================================= */
+/* HELPERS                                                     */
+/* ========================================================= */
+
+// Accepte [..], { data: [..] } ou { data: { data: [..] } } selon apiFetch.
+function toList(response) {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  return [];
+}
+
+function getUserName(user) {
+  if (!user) return null;
+  if (user.name) return user.name;
+  const full = [user.first_name, user.last_name].filter(Boolean).join(" ");
+  return full || null;
+}
+
+// Un learner "child" n'a peut-être pas de user : repli sur le parent.
+function getLearnerName(learner) {
+  const own = getUserName(learner?.user);
+  if (own) return own;
+
+  const parent = getUserName(learner?.parent_profile?.user);
+  if (parent) return `Child of ${parent}`;
+
+  return "Student";
+}
+
+function capitalize(value) {
+  if (!value) return "";
+  const text = String(value);
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function formatTime(value) {
+  return value ? String(value).slice(0, 5) : null;
+}
+
+// Créneau SOUHAITÉ dans la demande (pas un planning confirmé).
+function formatPreferredSlot(request) {
+  const day = capitalize(request?.preferred_day);
+  const start = formatTime(request?.preferred_start_time);
+  const end = formatTime(request?.preferred_end_time);
+
+  const time = start && end ? `${start} - ${end}` : start ?? "";
+  return [day, time].filter(Boolean).join(" · ") || "—";
+}
+
+function formatPrice(value) {
+  if (value === null || value === undefined || value === "") {
+    return "Not set yet";
+  }
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "Not set yet";
+  return `${number.toLocaleString("fr-FR")} FCFA`;
+}
+
+function formatDate(date) {
+  if (!date) return null;
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function sessionDay(session) {
+  const raw = String(session.session_date ?? "").slice(0, 10);
+  const value = new Date(`${raw}T00:00:00`);
+  return Number.isNaN(value.getTime()) ? null : value;
+}
+
+const STATUS = {
+  active: { label: "Active", style: "bg-green-50 text-green-700", icon: CheckCircle2 },
+  pending: { label: "Pending", style: "bg-amber-50 text-amber-700", icon: Clock3 },
+  cancelled: { label: "Cancelled", style: "bg-gray-100 text-gray-600", icon: XCircle },
+};
+
+const STATUS_ORDER = { active: 0, pending: 1, cancelled: 2 };
+
+const filters = [
+  { key: "all", label: "All" },
+  { key: "active", label: "Active" },
+  { key: "pending", label: "Pending" },
+  { key: "cancelled", label: "Cancelled" },
 ];
 
-const filters = ["All", "Active", "Pending", "Completed"];
+/* ========================================================= */
+/* PAGE                                                        */
+/* ========================================================= */
 
 export default function TeacherAssignmentsPage() {
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState("All");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [assignments, setAssignments] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [cancellingId, setCancellingId] = useState(null);
 
-  const filteredAssignments = assignments.filter((assignment) => {
-    const query = search.toLowerCase();
+  useEffect(() => {
+    let cancelled = false;
 
-    const matchesSearch =
-      assignment.student.toLowerCase().includes(query) ||
-      assignment.subject.toLowerCase().includes(query) ||
-      assignment.location.toLowerCase().includes(query) ||
-      assignment.id.toLowerCase().includes(query);
+    const load = async () => {
+      try {
+        const [assignmentsRes, sessionsRes] = await Promise.all([
+          apiFetch("/me/assignments"),
+          apiFetch("/me/sessions"),
+        ]);
 
-    const matchesFilter =
-      activeFilter === "All" ||
-      assignment.status === activeFilter;
+        if (cancelled) return;
+        setAssignments(toList(assignmentsRes));
+        setSessions(toList(sessionsRes));
+      } catch (err) {
+        if (!cancelled) {
+          setError(err?.message || "Unable to load your assignments.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
 
-    return matchesSearch && matchesFilter;
-  });
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Date de la première séance de chaque affectation.
+  const firstSessionByAssignment = useMemo(() => {
+    const map = new Map();
+
+    sessions.forEach((session) => {
+      const day = sessionDay(session);
+      if (!day) return;
+
+      const current = map.get(session.assignment_id);
+      if (!current || day < current) map.set(session.assignment_id, day);
+    });
+
+    return map;
+  }, [sessions]);
+
+  const rows = useMemo(
+    () =>
+      assignments
+        .map((assignment) => {
+          const request = assignment.tutoring_request;
+          const learner = request?.learner;
+
+          return {
+            id: assignment.id,
+            shortId: String(assignment.id).slice(0, 8),
+            status: assignment.status,
+            student: getLearnerName(learner),
+            className: learner?.classroom?.name ?? learner?.level?.name ?? null,
+            subject: request?.subject?.name ?? "—",
+            location: request?.location ?? learner?.location ?? "—",
+            slot: formatPreferredSlot(request),
+            price: formatPrice(assignment.agreed_price),
+            firstSession: firstSessionByAssignment.get(assignment.id) ?? null,
+          };
+        })
+        .sort(
+          (a, b) =>
+            (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)
+        ),
+    [assignments, firstSessionByAssignment]
+  );
+
+  const filteredRows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return rows.filter((row) => {
+      const matchesSearch =
+        !query ||
+        row.student.toLowerCase().includes(query) ||
+        row.subject.toLowerCase().includes(query) ||
+        row.location.toLowerCase().includes(query) ||
+        row.shortId.toLowerCase().includes(query);
+
+      const matchesFilter =
+        activeFilter === "all" || row.status === activeFilter;
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [rows, search, activeFilter]);
+
+  const counts = useMemo(
+    () => ({
+      total: rows.length,
+      active: rows.filter((r) => r.status === "active").length,
+      pending: rows.filter((r) => r.status === "pending").length,
+      subjects: new Set(
+        rows.filter((r) => r.subject !== "—").map((r) => r.subject)
+      ).size,
+    }),
+    [rows]
+  );
+
+  const handleCancel = async (row) => {
+    const confirmed = window.confirm(
+      `Cancel the assignment with ${row.student} (${row.subject})? ` +
+        "The request will become available again for other teachers."
+    );
+    if (!confirmed) return;
+
+    setCancellingId(row.id);
+    setError("");
+
+    try {
+      await apiFetch(`/assignments/${row.id}/cancel`, { method: "PATCH" });
+
+      setAssignments((current) =>
+        current.map((assignment) =>
+          assignment.id === row.id
+            ? { ...assignment, status: "cancelled" }
+            : assignment
+        )
+      );
+    } catch (err) {
+      setError(err?.message || "Unable to cancel this assignment.");
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#FAFAFC]">
@@ -122,37 +273,47 @@ export default function TeacherAssignmentsPage() {
             </h2>
 
             <p className="mt-1 text-sm text-gray-500">
-              Manage your active tutoring assignments and their details.
+              Follow the status, agreed price and requested schedule of each
+              assignment.
             </p>
           </section>
+
+          {error && (
+            <div
+              role="alert"
+              className="mb-6 rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-600"
+            >
+              {error}
+            </div>
+          )}
 
           {/* Summary */}
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryCard
               icon={UsersRound}
               label="Total Assignments"
-              value="5"
+              value={loading ? "—" : counts.total}
               description="All assignments"
             />
 
             <SummaryCard
               icon={CheckCircle2}
               label="Active"
-              value="3"
+              value={loading ? "—" : counts.active}
               description="Currently teaching"
             />
 
             <SummaryCard
               icon={Clock3}
               label="Pending"
-              value="1"
-              description="Awaiting activation"
+              value={loading ? "—" : counts.pending}
+              description="Awaiting admin validation"
             />
 
             <SummaryCard
               icon={BookOpen}
               label="Subjects"
-              value="3"
+              value={loading ? "—" : counts.subjects}
               description="Across your assignments"
             />
           </section>
@@ -167,7 +328,7 @@ export default function TeacherAssignmentsPage() {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search student, subject or assignment..."
+                  placeholder="Search student, subject or location..."
                   className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-pf-purple focus:bg-white"
                 />
               </div>
@@ -175,16 +336,16 @@ export default function TeacherAssignmentsPage() {
               <div className="flex flex-wrap gap-2">
                 {filters.map((filter) => (
                   <button
-                    key={filter}
+                    key={filter.key}
                     type="button"
-                    onClick={() => setActiveFilter(filter)}
+                    onClick={() => setActiveFilter(filter.key)}
                     className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                      activeFilter === filter
+                      activeFilter === filter.key
                         ? "bg-pf-purple text-white"
                         : "bg-gray-50 text-gray-500 hover:bg-pf-purple-light hover:text-pf-purple"
                     }`}
                   >
-                    {filter}
+                    {filter.label}
                   </button>
                 ))}
               </div>
@@ -199,32 +360,46 @@ export default function TeacherAssignmentsPage() {
               </h3>
 
               <p className="mt-0.5 text-xs text-gray-400">
-                {filteredAssignments.length} assignment
-                {filteredAssignments.length !== 1 ? "s" : ""}
+                {filteredRows.length} assignment
+                {filteredRows.length !== 1 ? "s" : ""}
               </p>
             </div>
 
-            <div className="divide-y divide-gray-100">
-              {filteredAssignments.map((assignment) => (
-                <AssignmentRow
-                  key={assignment.id}
-                  assignment={assignment}
-                />
-              ))}
-            </div>
+            {loading && (
+              <p className="px-6 py-10 text-center text-sm text-gray-400">
+                Loading your assignments…
+              </p>
+            )}
 
-            {filteredAssignments.length === 0 && (
+            {!loading && filteredRows.length > 0 && (
+              <div className="divide-y divide-gray-100">
+                {filteredRows.map((row) => (
+                  <AssignmentRow
+                    key={row.id}
+                    row={row}
+                    cancelling={cancellingId === row.id}
+                    onCancel={() => handleCancel(row)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!loading && filteredRows.length === 0 && (
               <div className="px-6 py-16 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pf-purple-light">
                   <FileText className="h-5 w-5 text-pf-purple" />
                 </div>
 
                 <h3 className="mt-4 font-semibold text-pf-purple-dark">
-                  No assignments found
+                  {rows.length === 0
+                    ? "No assignments yet"
+                    : "No assignments found"}
                 </h3>
 
                 <p className="mt-1 text-sm text-gray-400">
-                  Try changing your search or filter.
+                  {rows.length === 0
+                    ? "Assignments appear here once a request is matched to you."
+                    : "Try changing your search or filter."}
                 </p>
               </div>
             )}
@@ -235,11 +410,13 @@ export default function TeacherAssignmentsPage() {
   );
 }
 
-/* ---------------------------------- */
-/* Assignment Row                     */
-/* ---------------------------------- */
+/* ========================================================= */
+/* ASSIGNMENT ROW                                              */
+/* ========================================================= */
 
-function AssignmentRow({ assignment }) {
+function AssignmentRow({ row, cancelling, onCancel }) {
+  const canCancel = row.status === "active" || row.status === "pending";
+
   return (
     <div className="px-5 py-5 transition hover:bg-gray-50/60">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
@@ -251,72 +428,59 @@ function AssignmentRow({ assignment }) {
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h4 className="font-medium text-pf-purple-dark">
-                {assignment.student}
-              </h4>
-
-              <StatusBadge status={assignment.status} />
+              <h4 className="font-medium text-pf-purple-dark">{row.student}</h4>
+              <StatusBadge status={row.status} />
             </div>
 
             <p className="mt-1 text-sm text-gray-500">
-              {assignment.className} · {assignment.subject}
+              {[row.className, row.subject].filter(Boolean).join(" · ")}
             </p>
 
             <p className="mt-1 text-xs text-gray-400">
-              Assignment #{assignment.id}
+              Assignment #{row.shortId}
             </p>
           </div>
         </div>
 
         {/* Details */}
         <div className="grid gap-4 sm:grid-cols-3 xl:min-w-[560px]">
-          <Detail
-            icon={MapPin}
-            label="Location"
-            value={assignment.location}
-          />
-
+          <Detail icon={MapPin} label="Location" value={row.location} />
           <Detail
             icon={CalendarDays}
-            label="Schedule"
-            value={assignment.schedule}
+            label="Requested slot"
+            value={row.slot}
           />
-
-          <Detail
-            icon={CoinsIcon}
-            label="Agreed Rate"
-            value={assignment.rate}
-          />
+          <Detail icon={Banknote} label="Agreed price" value={row.price} />
         </div>
 
         {/* Action */}
-        <button
-          type="button"
-          className="flex w-fit items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-pf-purple transition hover:border-pf-purple/30 hover:bg-pf-purple-light"
-        >
-          View Details
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        {canCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={cancelling}
+            className="w-fit rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {cancelling ? "Cancelling…" : "Cancel"}
+          </button>
+        )}
       </div>
 
       <div className="mt-4 flex items-center gap-2 text-xs text-gray-400">
         <Clock3 className="h-3.5 w-3.5" />
-        Started {assignment.startDate}
+        {row.firstSession
+          ? `First lesson ${formatDate(row.firstSession)}`
+          : "No lesson scheduled yet"}
       </div>
     </div>
   );
 }
 
-/* ---------------------------------- */
-/* Summary Card                       */
-/* ---------------------------------- */
+/* ========================================================= */
+/* SMALL COMPONENTS                                            */
+/* ========================================================= */
 
-function SummaryCard({
-  icon: Icon,
-  label,
-  value,
-  description,
-}) {
+function SummaryCard({ icon: Icon, label, value, description }) {
   return (
     <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between">
@@ -329,9 +493,7 @@ function SummaryCard({
             {value}
           </p>
 
-          <p className="mt-1 text-xs text-gray-400">
-            {description}
-          </p>
+          <p className="mt-1 text-xs text-gray-400">{description}</p>
         </div>
 
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pf-purple-light text-pf-purple">
@@ -342,10 +504,6 @@ function SummaryCard({
   );
 }
 
-/* ---------------------------------- */
-/* Detail                             */
-/* ---------------------------------- */
-
 function Detail({ icon: Icon, label, value }) {
   return (
     <div>
@@ -354,48 +512,25 @@ function Detail({ icon: Icon, label, value }) {
         {label}
       </p>
 
-      <p className="text-sm font-medium text-pf-purple-dark">
-        {value}
-      </p>
+      <p className="text-sm font-medium text-pf-purple-dark">{value}</p>
     </div>
   );
 }
 
-/* ---------------------------------- */
-/* Status Badge                       */
-/* ---------------------------------- */
-
 function StatusBadge({ status }) {
-  const styles = {
-    Active: "bg-green-50 text-green-700",
-    Pending: "bg-amber-50 text-amber-700",
-    Completed: "bg-gray-100 text-gray-600",
+  const config = STATUS[status] ?? {
+    label: capitalize(status) || "Unknown",
+    style: "bg-gray-100 text-gray-600",
+    icon: Clock3,
   };
-
-  const icons = {
-    Active: CheckCircle2,
-    Pending: Clock3,
-    Completed: XCircle,
-  };
-
-  const Icon = icons[status] || Clock3;
+  const Icon = config.icon;
 
   return (
     <span
-      className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${
-        styles[status] || "bg-gray-100 text-gray-600"
-      }`}
+      className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${config.style}`}
     >
       <Icon className="h-3 w-3" />
-      {status}
+      {config.label}
     </span>
   );
-}
-
-/* ---------------------------------- */
-/* Coins icon                         */
-/* ---------------------------------- */
-
-function CoinsIcon(props) {
-  return <span {...props}>₣</span>;
 }
