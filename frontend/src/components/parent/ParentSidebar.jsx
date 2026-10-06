@@ -22,10 +22,9 @@ import { useLocation } from "react-router-dom";
 
 const navigation = [
   { label: "Dashboard", icon: Home, href: "/parent-dashboard" },
-  { label: "My Children", icon: UsersRound, href: "/parent-dashboard#children" },
-  { label: "Find a Teacher", icon: Search, href: "/search" },
+  { label: "My Children", icon: UsersRound, href: "/parent-children" },
+  { label: "Find a Teacher", icon: Search, href: "/parent-find-teacher" },
   { label: "Tutoring Requests", icon: ClipboardList, href: "/suivi-demande" },
-  { label: "My Teachers", icon: GraduationCap, href: "/parent-teachers" },
   { label: "Schedule", icon: CalendarDays, href: "/parent-schedule" },
   { label: "Payments", icon: CreditCard, href: "/paiements" },
   { label: "Evaluations", icon: Star, href: "/laisser-un-avis" },

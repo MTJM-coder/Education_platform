@@ -10,7 +10,8 @@ import Register from './pages/SignupRoleChoicePage';
 import StudentSignupPage from './pages/StudentSignupPage';
 import Login from './pages/LoginPage';
 import ParentDashboardPage from './pages/ParentDashboardPage';
-import SuiviDemandePage from './pages/SuiviDemandePage';
+import ParentFindTeacherPage from './pages/ParentFindTeacherPage';
+import ParentTutoringRequestsPage from './pages/ParentTutoringRequestsPage';
 import AssignmentDetailPage from './pages/AssignmentWorkspacePage';
 import PaymentsPage from './pages/PaymentsPage';
 import ChildResultsPage from './pages/ChildResultsPage';
@@ -18,7 +19,6 @@ import LeaveReviewPage from './pages/LeaveReviewPage';
 import DisputesPage from './pages/DisputesWorkspacePage';
 import LearningPlatformPage from './pages/LearningWorkspacePage';
 import AccountSettingsPage from './pages/AccountSettingsPage';
-import ParentTeachersPage from './pages/ParentTeachersPage';
 import ParentSchedulePage from './pages/ParentSchedulePage';
 import ParentProgressPage from './pages/ParentProgressPage';
 import StudentDashboardPage from './pages/StudentDashboardPage';
@@ -64,6 +64,7 @@ import AdminDisputeDetailsPage from './pages/AdminDisputeDetailPage';
 import AdminTeacherDetailsPage from './pages/AdminTeacherDetailPage';
 import AdminTutoringDetailsPage from './pages/AdminTutoringDetailPage';
 import AdminUserDetailsPage from './pages/AdminUserDetailsPage';
+import ParentChildrenPage from './pages/ParentChildrenPage';
 const App = () => {
   return (
     <BrowserRouter>
@@ -90,9 +91,8 @@ const App = () => {
           <Route path='/student-resources' element={<StudentResourcesPage />} />
           <Route path='/student-notifications' element={<StudentNotificationsPage />} />
           <Route path='/student-profile' element={<StudentProfilePage />} />
-          <Route path='/suivi-demande' element={<SuiviDemandePage />} />
+          <Route path='/suivi-demande' element={<ParentTutoringRequestsPage />} />
           <Route path='/affectation' element={<AssignmentDetailPage />} />
-          <Route path='/parent-teachers' element={<ParentTeachersPage />} />
           <Route path='/parent-schedule' element={<ParentSchedulePage />} />
           <Route path='/child-progress' element={<ParentProgressPage />} />
           <Route path='/paiements' element={<PaymentsPage />} />
@@ -131,6 +131,8 @@ const App = () => {
           <Route path="/admin-teachers/:id" element={<AdminTeacherDetailsPage />} />
           <Route path='/admin-tutoring/:id' element={<AdminTutoringDetailsPage />} />
           <Route path='/admin-users/:id' element={<AdminUserDetailsPage/>}/>
+          <Route path='/parent-children' element={<ParentChildrenPage />} />
+          <Route path='/parent-find-teacher' element={<ParentFindTeacherPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
