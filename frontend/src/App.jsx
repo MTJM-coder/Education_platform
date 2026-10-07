@@ -13,11 +13,11 @@ import ParentDashboardPage from './pages/ParentDashboardPage';
 import ParentFindTeacherPage from './pages/ParentFindTeacherPage';
 import ParentTutoringRequestsPage from './pages/ParentTutoringRequestsPage';
 import AssignmentDetailPage from './pages/AssignmentWorkspacePage';
-import PaymentsPage from './pages/PaymentsPage';
-import ChildResultsPage from './pages/ChildResultsPage';
+import ParentPaymentsPage from './pages/ParentPaymentsPage';
+import ChildResultsPage from './pages/ParentResultsPage';
 import LeaveReviewPage from './pages/LeaveReviewPage';
 import DisputesPage from './pages/DisputesWorkspacePage';
-import LearningPlatformPage from './pages/LearningWorkspacePage';
+import LearningPlatformPage from './pages/LearningPlatformPage';
 import AccountSettingsPage from './pages/AccountSettingsPage';
 import ParentSchedulePage from './pages/ParentSchedulePage';
 import ParentProgressPage from './pages/ParentProgressPage';
@@ -95,7 +95,7 @@ const App = () => {
           <Route path='/affectation' element={<AssignmentDetailPage />} />
           <Route path='/parent-schedule' element={<ParentSchedulePage />} />
           <Route path='/child-progress' element={<ParentProgressPage />} />
-          <Route path='/paiements' element={<PaymentsPage />} />
+          <Route path='/paiements' element={<ParentPaymentsPage />} />
           <Route path='/resultats-scolaires' element={<ChildResultsPage />} />
           <Route path='/laisser-un-avis' element={<LeaveReviewPage />} />
           <Route path='/litiges' element={<DisputesPage />} />

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -16,6 +16,7 @@ import {
   XCircle,
 } from "lucide-react";
 import ParentSidebar from "../components/parent/ParentSidebar";
+import { apiFetch } from "../lib/apiClient";
 
 const initialRequests = [
   {
@@ -305,6 +306,20 @@ export default function ParentTutoringRequestsPage() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [childFilter, setChildFilter] = useState("All");
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [error,setError]=useState("")
+
+  useEffect(()=>{
+    const fetch = async ()=>{
+      try{
+        const requestresponse = await apiFetch("/me/tutoring-requests")
+        setRequests(requestresponse.data)
+      }catch(err){
+        setError(err.message)
+      }
+      
+    }
+    fetch()
+  },[])
 
   const children = useMemo(() => {
     return ["All", ...new Set(requests.map((request) => request.child))];

@@ -17,11 +17,6 @@ import ParentSidebar from "../components/parent/ParentSidebar";
 import AddChildModal from "../components/parent/AddChildModal";
 import { apiFetch } from "../lib/apiClient";
 
-/* ========================================================= */
-/* HELPERS                                                     */
-/* ========================================================= */
-
-// Accepte [..], { data: [..] } ou { data: { data: [..] } } selon apiFetch.
 function toList(response) {
   if (Array.isArray(response)) return response;
   if (Array.isArray(response?.data)) return response.data;
@@ -53,9 +48,7 @@ const CHILD_COLORS = [
   "bg-amber-100 text-amber-700",
 ];
 
-/* ========================================================= */
-/* SMALL COMPONENTS                                            */
-/* ========================================================= */
+
 
 function ProgressBar({ value }) {
   const width = Math.max(0, Math.min(100, Number(value) || 0));
