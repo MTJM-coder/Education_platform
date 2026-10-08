@@ -14,60 +14,10 @@ import {
   Search,
   X,
   XCircle,
+  AlertCircle,
 } from "lucide-react";
 import ParentSidebar from "../components/parent/ParentSidebar";
 import { apiFetch } from "../lib/apiClient";
-
-const initialRequests = [
-  {
-    id: "REQ-001",
-    child: "Doly Junior",
-    teacher: "Xavier Ndi",
-    subject: "Mathematics",
-    level: "Secondary",
-    frequency: "Weekly",
-    location: "Bonamoussadi, Douala",
-    date: "20 Sep 2026",
-    status: "Accepted",
-    message: "Support needed with algebra and equations.",
-  },
-  {
-    id: "REQ-002",
-    child: "Mireille Djoumesse",
-    teacher: "Nfor Grace",
-    subject: "Physics",
-    level: "Secondary",
-    frequency: "Twice a week",
-    location: "Makepe, Douala",
-    date: "19 Sep 2026",
-    status: "Pending",
-    message: "Preparation for the next physics assessment.",
-  },
-  {
-    id: "REQ-003",
-    child: "Doly Junior",
-    teacher: "Acha Mireille",
-    subject: "English",
-    level: "Secondary",
-    frequency: "Weekly",
-    location: "Akwa, Douala",
-    date: "17 Sep 2026",
-    status: "Completed",
-    message: "Improve grammar and written expression.",
-  },
-  {
-    id: "REQ-004",
-    child: "Mireille Djoumesse",
-    teacher: "Ngoe Laure",
-    subject: "French",
-    level: "Primary",
-    frequency: "Weekly",
-    location: "Bépanda, Douala",
-    date: "15 Sep 2026",
-    status: "Declined",
-    message: "French reading and comprehension support.",
-  },
-];
 
 const statusConfig = {
   Pending: {
@@ -91,6 +41,47 @@ const statusConfig = {
     icon: CheckCircle2,
   },
 };
+
+/**
+ * Mappe un objet TutoringRequest de l'API Laravel vers le format plat attendu par le UI.
+ */
+function mapApiRequestToUi(item) {
+  const assignment = item.assignments?.[0];
+  const teacherUser = assignment?.teacher?.user;
+
+  const teacherName = teacherUser
+    ? `${teacherUser.first_name || ""} ${teacherUser.last_name || ""}`.trim()
+    : "Unassigned";
+
+  const childName = item.learner
+    ? `${item.learner.first_name || ""} ${item.learner.last_name || ""}`.trim()
+    : "N/A";
+
+  const rawStatus = assignment?.status || "Pending";
+  const status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+
+  const formattedDate = item.created_at
+    ? new Date(item.created_at).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "N/A";
+
+  return {
+    id: `REQ-${String(item.id).padStart(3, "0")}`,
+    rawId: item.id,
+    child: childName,
+    teacher: teacherName,
+    subject: item.subject?.name || "General",
+    level: item.learner?.level?.name || "N/A",
+    frequency: item.frequency || "Weekly",
+    location: item.location || "N/A",
+    date: formattedDate,
+    status: status,
+    message: item.description || item.message || "",
+  };
+}
 
 function StatusBadge({ status }) {
   const config = statusConfig[status] || statusConfig.Pending;
@@ -206,7 +197,7 @@ function RequestDetailsModal({ request, onClose }) {
 
           {request.status === "Accepted" && (
             <Link
-              to={`/parent-schedule?request=${request.id}`}
+              to={`/parent-schedule?request=${request.rawId || request.id}`}
               onClick={onClose}
               className="flex items-center justify-center gap-2 rounded-lg bg-pf-purple px-4 py-2.5 text-sm font-medium text-white hover:bg-pf-purple-dark"
             >
@@ -300,29 +291,49 @@ function RequestRow({ request, onView }) {
   );
 }
 
+function StatCard({ label, value, description, icon: Icon = MessageSquare }) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pf-purple-light text-pf-purple">
+        <Icon size={19} />
+      </div>
+
+      <p className="mt-4 text-2xl font-semibold text-gray-900">{value}</p>
+      <p className="mt-1 text-sm font-medium text-gray-700">{label}</p>
+      <p className="mt-1 text-xs text-gray-400">{description}</p>
+    </div>
+  );
+}
+
 export default function ParentTutoringRequestsPage() {
-  const [requests, setRequests] = useState(initialRequests);
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [childFilter, setChildFilter] = useState("All");
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [error,setError]=useState("")
 
-  useEffect(()=>{
-    const fetch = async ()=>{
-      try{
-        const requestresponse = await apiFetch("/me/tutoring-requests")
-        setRequests(requestresponse.data)
-      }catch(err){
-        setError(err.message)
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const requestresponse = await apiFetch("/me/tutoring-requests");
+        const formattedData = (requestresponse.data || []).map(mapApiRequestToUi);
+        setRequests(formattedData);
+      } catch (err) {
+        setError(err.message || "Failed to load tutoring requests.");
+      } finally {
+        setLoading(false);
       }
-      
-    }
-    fetch()
-  },[])
+    };
+
+    fetchRequests();
+  }, []);
 
   const children = useMemo(() => {
-    return ["All", ...new Set(requests.map((request) => request.child))];
+    return ["All", ...new Set(requests.map((request) => request.child).filter(Boolean))];
   }, [requests]);
 
   const filteredRequests = useMemo(() => {
@@ -349,9 +360,9 @@ export default function ParentTutoringRequestsPage() {
   const stats = useMemo(
     () => ({
       total: requests.length,
-      pending: requests.filter((item) => item.status === "Pending").length,
-      accepted: requests.filter((item) => item.status === "Accepted").length,
-      completed: requests.filter((item) => item.status === "Completed").length,
+      pending: requests.filter((item) => item.status === "pending").length,
+      accepted: requests.filter((item) => item.status === "accepted").length,
+      completed: requests.filter((item) => item.status === "completed").length,
     }),
     [requests]
   );
@@ -360,24 +371,6 @@ export default function ParentTutoringRequestsPage() {
     setSearch("");
     setStatusFilter("All");
     setChildFilter("All");
-  }
-
-  function cancelRequest(id) {
-    const confirmed = window.confirm(
-      "Are you sure you want to cancel this tutoring request?"
-    );
-
-    if (!confirmed) return;
-
-    setRequests((current) =>
-      current.map((request) =>
-        request.id === id
-          ? { ...request, status: "Declined" }
-          : request
-      )
-    );
-
-    setSelectedRequest(null);
   }
 
   return (
@@ -410,6 +403,14 @@ export default function ParentTutoringRequestsPage() {
               Find a Teacher
             </Link>
           </header>
+
+          {/* ERROR NOTICE */}
+          {error && (
+            <div className="mb-6 flex items-center gap-3 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+              <AlertCircle size={18} className="shrink-0" />
+              <p>{error}</p>
+            </div>
+          )}
 
           {/* STATS */}
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -525,7 +526,11 @@ export default function ParentTutoringRequestsPage() {
               </div>
             </div>
 
-            {filteredRequests.length > 0 ? (
+            {loading ? (
+              <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center text-sm text-gray-500">
+                Loading requests...
+              </div>
+            ) : filteredRequests.length > 0 ? (
               <div className="space-y-3">
                 {filteredRequests.map((request) => (
                   <RequestRow
@@ -592,27 +597,6 @@ export default function ParentTutoringRequestsPage() {
           onClose={() => setSelectedRequest(null)}
         />
       )}
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  description,
-  icon: Icon = MessageSquare,
-}) {
-  return (
-    <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pf-purple-light text-pf-purple">
-        <Icon size={19} />
-      </div>
-
-      <p className="mt-4 text-2xl font-semibold text-gray-900">{value}</p>
-
-      <p className="mt-1 text-sm font-medium text-gray-700">{label}</p>
-
-      <p className="mt-1 text-xs text-gray-400">{description}</p>
     </div>
   );
 }

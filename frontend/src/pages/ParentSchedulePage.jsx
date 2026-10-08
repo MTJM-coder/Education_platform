@@ -1,135 +1,90 @@
-import React, { useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import ParentSidebar from "../components/parent/ParentSidebar";
+import { apiFetch } from "../lib/apiClient";
 
 import {
+  AlertCircle,
+  BookOpen,
   CalendarDays,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock3,
-  MapPin,
-  UserRound,
-  BookOpen,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Search,
-  Filter,
-  X,
-  Video,
   GraduationCap,
+  MapPin,
+  Search,
+  UserRound,
+  X,
+  XCircle,
 } from "lucide-react";
 
-const sessionsData = [
-  {
-    id: "SES-001",
-    date: "2026-10-08",
-    startTime: "15:00",
-    endTime: "16:30",
-    subject: "Mathematics",
-    teacher: "Xavier Ndi",
-    teacherId: 1,
-    child: "Doly Junior",
-    childId: 1,
-    level: "Secondary",
-    location: "Home",
-    address: "Bonamoussadi",
-    status: "scheduled",
-    type: "home",
-    notes: "Algebra revision and exercises.",
-  },
-  {
-    id: "SES-002",
-    date: "2026-10-09",
-    startTime: "16:00",
-    endTime: "17:30",
-    subject: "Physics",
-    teacher: "Nfor Grace",
-    teacherId: 2,
-    child: "Mireille Djoumesse",
-    childId: 2,
-    level: "Secondary",
-    location: "Online",
-    address: "Online session",
-    status: "scheduled",
-    type: "online",
-    notes: "Mechanics and problem solving.",
-  },
-  {
-    id: "SES-003",
-    date: "2026-10-10",
-    startTime: "10:00",
-    endTime: "11:30",
-    subject: "English",
-    teacher: "Acha Mireille",
-    teacherId: 3,
-    child: "Doly Junior",
-    childId: 1,
-    level: "Secondary",
-    location: "Home",
-    address: "Akwa",
-    status: "confirmed",
-    type: "home",
-    notes: "Grammar and speaking practice.",
-  },
-  {
-    id: "SES-004",
-    date: "2026-10-12",
-    startTime: "15:30",
-    endTime: "17:00",
-    subject: "Mathematics",
-    teacher: "Xavier Ndi",
-    teacherId: 1,
-    child: "Doly Junior",
-    childId: 1,
-    level: "Secondary",
-    location: "Home",
-    address: "Bonamoussadi",
-    status: "scheduled",
-    type: "home",
-    notes: "Geometry exercises.",
-  },
-  {
-    id: "SES-005",
-    date: "2026-10-13",
-    startTime: "16:00",
-    endTime: "17:30",
-    subject: "Physics",
-    teacher: "Nfor Grace",
-    teacherId: 2,
-    child: "Mireille Djoumesse",
-    childId: 2,
-    level: "Secondary",
-    location: "Online",
-    address: "Online session",
-    status: "scheduled",
-    type: "online",
-    notes: "Electricity chapter.",
-  },
-  {
-    id: "SES-006",
-    date: "2026-10-06",
-    startTime: "15:00",
-    endTime: "16:30",
-    subject: "Mathematics",
-    teacher: "Xavier Ndi",
-    teacherId: 1,
-    child: "Doly Junior",
-    childId: 1,
-    level: "Secondary",
-    location: "Home",
-    address: "Bonamoussadi",
-    status: "completed",
-    type: "home",
-    notes: "Revision session completed.",
-  },
-];
+/* ========================================================= */
+/* HELPERS                                                     */
+/* ========================================================= */
 
-const children = [
-  { id: "all", name: "All children" },
-  { id: 1, name: "Doly Junior" },
-  { id: 2, name: "Mireille Djoumesse" },
-];
+// Accepte [..], { data: [..] } ou { data: { data: [..] } } selon apiFetch.
+function toList(response) {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  return [];
+}
+
+// Accepte { ... }, { data: { ... } } ou { data: { data: { ... } } }.
+function toObject(response) {
+  return response?.data?.data ?? response?.data ?? response ?? null;
+}
+
+function getUserName(user) {
+  if (!user) return null;
+  if (user.name) return user.name;
+  const full = [user.first_name, user.last_name].filter(Boolean).join(" ");
+  return full || null;
+}
+
+function getLearnerName(learner) {
+  if (!learner) return "Student";
+  const own = [learner.first_name, learner.last_name].filter(Boolean).join(" ");
+  if (own) return own;
+  return getUserName(learner.user) ?? "Student";
+}
+
+// Dates toujours en heure LOCALE (toISOString décalerait le jour près de minuit).
+function toKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function atNoon(key) {
+  return new Date(`${key}T12:00:00`);
+}
+
+function formatDate(key) {
+  return atNoon(key).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getDayNumber(key) {
+  return atNoon(key).getDate();
+}
+
+// État affiché, déduit du statut et des confirmations (parent / enseignant).
+function deriveState(raw) {
+  if (raw.status === "completed") return "completed";
+  if (raw.status === "scheduled") {
+    if (raw.confirmed_by_parent_at) return "confirmed";
+    if (raw.confirmed_by_teacher_at) return "awaiting";
+    return "scheduled";
+  }
+  return raw.status;
+}
 
 const statusConfig = {
   scheduled: {
@@ -137,8 +92,13 @@ const statusConfig = {
     className: "bg-blue-50 text-blue-700",
     icon: CalendarDays,
   },
+  awaiting: {
+    label: "Awaiting your confirmation",
+    className: "bg-amber-50 text-amber-700",
+    icon: AlertCircle,
+  },
   confirmed: {
-    label: "Confirmed",
+    label: "Confirmed by you",
     className: "bg-green-50 text-green-700",
     icon: CheckCircle2,
   },
@@ -154,93 +114,215 @@ const statusConfig = {
   },
 };
 
-function formatDate(dateString) {
-  return new Date(`${dateString}T12:00:00`).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+function toSession(raw) {
+  const assignment = raw.assignment;
+  const request = assignment?.tutoring_request;
+  const learner = request?.learner;
+  const date = String(raw.session_date ?? "").slice(0, 10);
+  const startTime = String(raw.start_time ?? "").slice(0, 5);
+
+  return {
+    id: raw.id,
+    date,
+    startTime,
+    endTime: String(raw.end_time ?? "").slice(0, 5),
+    start: new Date(`${date}T${startTime || "00:00"}:00`),
+    subject: request?.subject?.name ?? "—",
+    teacher: getUserName(assignment?.teacher?.user) ?? "Teacher",
+    childId: learner?.id ?? request?.learner_id ?? null,
+    child: getLearnerName(learner),
+    location: raw.location ?? request?.location ?? learner?.location ?? "—",
+    state: deriveState(raw),
+    confirmedByParent: Boolean(raw.confirmed_by_parent_at),
+    confirmedByTeacher: Boolean(raw.confirmed_by_teacher_at),
+  };
 }
 
-function shortDate(dateString) {
-  return new Date(`${dateString}T12:00:00`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
+const OPEN_STATES = ["scheduled", "awaiting", "confirmed"];
 
-function getDayNumber(dateString) {
-  return new Date(`${dateString}T12:00:00`).getDate();
-}
-
-function isToday(dateString) {
-  const today = new Date().toISOString().split("T")[0];
-  return dateString === today;
-}
+/* ========================================================= */
+/* PAGE                                                        */
+/* ========================================================= */
 
 export default function ParentSchedulePage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const learnerParam = searchParams.get("learner");
 
-  const requestId = searchParams.get("request");
-  const learnerId = searchParams.get("learner");
+  const [rawSessions, setRawSessions] = useState([]);
+  const [children, setChildren] = useState([]);
+  const [activeTeachers, setActiveTeachers] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [selectedDate, setSelectedDate] = useState("2026-10-08");
-  const [selectedChild, setSelectedChild] = useState(
-    learnerId ? Number(learnerId) : "all"
-  );
+  const [selectedDate, setSelectedDate] = useState(() => toKey(new Date()));
+  const [selectedChild, setSelectedChild] = useState(learnerParam || "all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [view, setView] = useState("week");
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
+
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
+
+  const todayKey = toKey(new Date());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const [sessionsRes, childrenRes, requestsRes] = await Promise.all([
+          apiFetch("/me/sessions"),
+          apiFetch("/me/children"),
+          apiFetch("/me/tutoring-requests"),
+        ]);
+
+        if (cancelled) return;
+
+        const sessions = toList(sessionsRes);
+        setRawSessions(sessions);
+        setChildren(toList(childrenRes));
+
+        const teacherIds = new Set(
+          toList(requestsRes)
+            .flatMap((request) => request.assignments ?? [])
+            .filter((assignment) => assignment.status === "active")
+            .map((assignment) => assignment.teacher_id)
+        );
+        setActiveTeachers(teacherIds.size);
+
+        // Ouvre directement sur la prochaine séance, sinon sur aujourd'hui.
+        const next = sessions
+          .map((raw) => String(raw.session_date ?? "").slice(0, 10))
+          .filter((date) => date >= toKey(new Date()))
+          .sort()[0];
+        if (next) setSelectedDate(next);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err?.message || "Unable to load your schedule.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const sessions = useMemo(() => rawSessions.map(toSession), [rawSessions]);
+
+  const childOptions = useMemo(
+    () => [
+      { id: "all", name: "All children" },
+      ...children.map((child) => ({ id: child.id, name: getLearnerName(child) })),
+    ],
+    [children]
+  );
 
   const filteredSessions = useMemo(() => {
-    return sessionsData.filter((session) => {
+    const text = search.trim().toLowerCase();
+
+    return sessions.filter((session) => {
       const matchesChild =
-        selectedChild === "all" || session.childId === Number(selectedChild);
-
+        selectedChild === "all" || session.childId === selectedChild;
       const matchesStatus =
-        statusFilter === "all" || session.status === statusFilter;
-
-      const searchText = search.toLowerCase();
-
+        statusFilter === "all" || session.state === statusFilter;
       const matchesSearch =
-        !search ||
-        session.subject.toLowerCase().includes(searchText) ||
-        session.teacher.toLowerCase().includes(searchText) ||
-        session.child.toLowerCase().includes(searchText);
+        !text ||
+        session.subject.toLowerCase().includes(text) ||
+        session.teacher.toLowerCase().includes(text) ||
+        session.child.toLowerCase().includes(text);
 
       return matchesChild && matchesStatus && matchesSearch;
     });
-  }, [selectedChild, statusFilter, search]);
+  }, [sessions, selectedChild, statusFilter, search]);
 
-  const selectedDaySessions = filteredSessions.filter(
-    (session) => session.date === selectedDate
+  const selectedDaySessions = useMemo(
+    () =>
+      filteredSessions
+        .filter((session) => session.date === selectedDate)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    [filteredSessions, selectedDate]
   );
 
-  const upcomingSessions = filteredSessions
-    .filter(
-      (session) =>
-        session.status === "scheduled" || session.status === "confirmed"
+  const upcomingSessions = useMemo(
+    () =>
+      filteredSessions
+        .filter(
+          (session) =>
+            OPEN_STATES.includes(session.state) && session.date >= todayKey
+        )
+        .sort((a, b) => a.start - b.start),
+    [filteredSessions, todayKey]
+  );
+
+  const stats = useMemo(
+    () => ({
+      upcoming: sessions.filter(
+        (s) => OPEN_STATES.includes(s.state) && s.date >= todayKey
+      ).length,
+      completed: sessions.filter((s) => s.state === "completed").length,
+      today: sessions.filter(
+        (s) => s.date === todayKey && s.state !== "cancelled"
+      ).length,
+    }),
+    [sessions, todayKey]
+  );
+
+  // Bande de dates : jours avec séances (depuis 7 jours) + aujourd'hui.
+  const stripDates = useMemo(() => {
+    const limit = new Date();
+    limit.setDate(limit.getDate() - 7);
+    const minKey = toKey(limit);
+
+    return Array.from(
+      new Set([todayKey, ...sessions.map((session) => session.date)])
     )
-    .sort((a, b) => a.date.localeCompare(b.date));
+      .filter((date) => date >= minKey)
+      .sort();
+  }, [sessions, todayKey]);
 
-  const completedCount = sessionsData.filter(
-    (session) => session.status === "completed"
-  ).length;
-
-  const scheduledCount = sessionsData.filter(
-    (session) =>
-      session.status === "scheduled" || session.status === "confirmed"
-  ).length;
+  const selectedSession =
+    sessions.find((session) => session.id === selectedSessionId) ?? null;
 
   const changeDay = (amount) => {
-    const date = new Date(`${selectedDate}T12:00:00`);
+    const date = atNoon(selectedDate);
     date.setDate(date.getDate() + amount);
-
-    setSelectedDate(date.toISOString().split("T")[0]);
+    setSelectedDate(toKey(date));
   };
+
+  const openSession = (session) => {
+    setConfirmError("");
+    setSelectedSessionId(session.id);
+  };
+
+  const handleConfirm = async (session) => {
+    setConfirming(true);
+    setConfirmError("");
+
+    try {
+      const response = await apiFetch(`/sessions/${session.id}/confirm`, {
+        method: "PATCH",
+      });
+      const updated = toObject(response);
+
+      // La réponse n'embarque pas les relations : on fusionne avec l'existant.
+      setRawSessions((current) =>
+        current.map((raw) =>
+          raw.id === session.id ? { ...raw, ...updated } : raw
+        )
+      );
+    } catch (err) {
+      setConfirmError(err?.message || "Unable to confirm this session.");
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const hasFilters = search || selectedChild !== "all" || statusFilter !== "all";
 
   return (
     <div className="min-h-screen bg-[#F8F8FA]">
@@ -253,22 +335,17 @@ export default function ParentSchedulePage() {
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div>
                 <div className="mb-2 flex items-center gap-2 text-sm text-gray-500">
-                  <Link
-                    to="/parent-dashboard"
-                    className="hover:text-[#6D4AFF]"
-                  >
+                  <Link to="/parent-dashboard" className="hover:text-[#6D4AFF]">
                     Dashboard
                   </Link>
                   <span>/</span>
                   <span className="text-gray-700">Schedule</span>
                 </div>
 
-                <h1 className="text-2xl font-bold text-gray-900">
-                  My Schedule
-                </h1>
+                <h1 className="text-2xl font-bold text-gray-900">My Schedule</h1>
 
                 <p className="mt-1 text-sm text-gray-500">
-                  Manage and follow all tutoring sessions for your children.
+                  Follow all tutoring sessions for your children.
                 </p>
               </div>
 
@@ -284,36 +361,36 @@ export default function ParentSchedulePage() {
         </div>
 
         <div className="px-5 py-6 sm:px-8 lg:px-10">
+          {error && (
+            <div
+              role="alert"
+              className="mb-6 rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-600"
+            >
+              {error}
+            </div>
+          )}
+
           {/* Stats */}
           <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard
               icon={CalendarDays}
               label="Upcoming sessions"
-              value={scheduledCount}
+              value={loading ? "—" : stats.upcoming}
             />
-
             <StatCard
               icon={CheckCircle2}
               label="Completed"
-              value={completedCount}
+              value={loading ? "—" : stats.completed}
             />
-
             <StatCard
               icon={Clock3}
               label="Today's sessions"
-              value={
-                sessionsData.filter(
-                  (session) =>
-                    isToday(session.date) &&
-                    session.status !== "cancelled"
-                ).length
-              }
+              value={loading ? "—" : stats.today}
             />
-
             <StatCard
               icon={UserRound}
               label="Active teachers"
-              value={3}
+              value={loading ? "—" : activeTeachers}
             />
           </div>
 
@@ -338,16 +415,11 @@ export default function ParentSchedulePage() {
               <div className="flex flex-col gap-3 sm:flex-row">
                 <select
                   value={selectedChild}
-                  onChange={(e) =>
-                    setSelectedChild(
-                      e.target.value === "all"
-                        ? "all"
-                        : Number(e.target.value)
-                    )
-                  }
+                  onChange={(e) => setSelectedChild(e.target.value)}
+                  aria-label="Child"
                   className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-[#6D4AFF]"
                 >
-                  {children.map((child) => (
+                  {childOptions.map((child) => (
                     <option key={child.id} value={child.id}>
                       {child.name}
                     </option>
@@ -357,19 +429,19 @@ export default function ParentSchedulePage() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
+                  aria-label="Status"
                   className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-[#6D4AFF]"
                 >
                   <option value="all">All statuses</option>
                   <option value="scheduled">Scheduled</option>
-                  <option value="confirmed">Confirmed</option>
+                  <option value="awaiting">Awaiting your confirmation</option>
+                  <option value="confirmed">Confirmed by you</option>
                   <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
                 </select>
 
-                {(search ||
-                  selectedChild !== "all" ||
-                  statusFilter !== "all") && (
+                {hasFilters && (
                   <button
+                    type="button"
                     onClick={() => {
                       setSearch("");
                       setSelectedChild("all");
@@ -392,10 +464,7 @@ export default function ParentSchedulePage() {
               <div className="flex flex-col gap-4 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <div className="rounded-xl bg-[#F0ECFF] p-2.5">
-                    <CalendarDays
-                      size={21}
-                      className="text-[#6D4AFF]"
-                    />
+                    <CalendarDays size={21} className="text-[#6D4AFF]" />
                   </div>
 
                   <div>
@@ -411,6 +480,7 @@ export default function ParentSchedulePage() {
 
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => changeDay(-1)}
                     className="rounded-lg border border-gray-200 p-2 text-gray-600 hover:bg-gray-50"
                     title="Previous day"
@@ -419,17 +489,15 @@ export default function ParentSchedulePage() {
                   </button>
 
                   <button
-                    onClick={() =>
-                      setSelectedDate(
-                        new Date().toISOString().split("T")[0]
-                      )
-                    }
+                    type="button"
+                    onClick={() => setSelectedDate(todayKey)}
                     className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
                     Today
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => changeDay(1)}
                     className="rounded-lg border border-gray-200 p-2 text-gray-600 hover:bg-gray-50"
                     title="Next day"
@@ -442,61 +510,56 @@ export default function ParentSchedulePage() {
               {/* Mini date strip */}
               <div className="overflow-x-auto border-b border-gray-100">
                 <div className="flex min-w-max gap-2 p-4">
-                  {sessionsData
-                    .map((session) => session.date)
-                    .filter(
-                      (date, index, arr) => arr.indexOf(date) === index
-                    )
-                    .sort()
-                    .map((date) => {
-                      const active = date === selectedDate;
+                  {stripDates.map((date) => {
+                    const active = date === selectedDate;
 
-                      return (
-                        <button
-                          key={date}
-                          onClick={() => setSelectedDate(date)}
-                          className={`min-w-[72px] rounded-xl border px-3 py-2 text-center transition ${
-                            active
-                              ? "border-[#6D4AFF] bg-[#6D4AFF] text-white"
-                              : "border-gray-200 bg-white text-gray-700 hover:border-[#BDB0FF]"
-                          }`}
-                        >
-                          <div className="text-xs opacity-75">
-                            {new Date(
-                              `${date}T12:00:00`
-                            ).toLocaleDateString("en-US", {
-                              weekday: "short",
-                            })}
-                          </div>
+                    return (
+                      <button
+                        type="button"
+                        key={date}
+                        onClick={() => setSelectedDate(date)}
+                        className={`min-w-[72px] rounded-xl border px-3 py-2 text-center transition ${
+                          active
+                            ? "border-[#6D4AFF] bg-[#6D4AFF] text-white"
+                            : "border-gray-200 bg-white text-gray-700 hover:border-[#BDB0FF]"
+                        }`}
+                      >
+                        <div className="text-xs opacity-75">
+                          {atNoon(date).toLocaleDateString("en-US", {
+                            weekday: "short",
+                          })}
+                        </div>
 
-                          <div className="mt-1 text-lg font-bold">
-                            {getDayNumber(date)}
-                          </div>
+                        <div className="mt-1 text-lg font-bold">
+                          {getDayNumber(date)}
+                        </div>
 
-                          {filteredSessions.some(
-                            (session) => session.date === date
-                          ) && (
-                            <div
-                              className={`mx-auto mt-1 h-1.5 w-1.5 rounded-full ${
-                                active ? "bg-white" : "bg-[#6D4AFF]"
-                              }`}
-                            />
-                          )}
-                        </button>
-                      );
-                    })}
+                        {filteredSessions.some((s) => s.date === date) && (
+                          <div
+                            className={`mx-auto mt-1 h-1.5 w-1.5 rounded-full ${
+                              active ? "bg-white" : "bg-[#6D4AFF]"
+                            }`}
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Sessions */}
               <div className="p-5">
-                {selectedDaySessions.length > 0 ? (
+                {loading ? (
+                  <p className="py-16 text-center text-sm text-gray-400">
+                    Loading your sessions…
+                  </p>
+                ) : selectedDaySessions.length > 0 ? (
                   <div className="space-y-4">
                     {selectedDaySessions.map((session) => (
                       <SessionCard
                         key={session.id}
                         session={session}
-                        onDetails={() => setSelectedSession(session)}
+                        onDetails={() => openSession(session)}
                       />
                     ))}
                   </div>
@@ -509,9 +572,7 @@ export default function ParentSchedulePage() {
             {/* Upcoming */}
             <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
               <div className="border-b border-gray-100 p-5">
-                <h2 className="font-semibold text-gray-900">
-                  Upcoming Sessions
-                </h2>
+                <h2 className="font-semibold text-gray-900">Upcoming Sessions</h2>
                 <p className="mt-1 text-sm text-gray-500">
                   Your next tutoring sessions
                 </p>
@@ -522,19 +583,18 @@ export default function ParentSchedulePage() {
                   <div className="space-y-3">
                     {upcomingSessions.slice(0, 5).map((session) => (
                       <button
+                        type="button"
                         key={session.id}
                         onClick={() => {
                           setSelectedDate(session.date);
-                          setSelectedSession(session);
+                          openSession(session);
                         }}
                         className="w-full rounded-xl border border-gray-100 p-4 text-left transition hover:border-[#CFC6FF] hover:bg-[#FAF9FF]"
                       >
                         <div className="flex items-start gap-3">
                           <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg bg-[#F0ECFF] text-[#6D4AFF]">
                             <span className="text-[10px] font-medium uppercase">
-                              {new Date(
-                                `${session.date}T12:00:00`
-                              ).toLocaleDateString("en-US", {
+                              {atNoon(session.date).toLocaleDateString("en-US", {
                                 month: "short",
                               })}
                             </span>
@@ -579,19 +639,22 @@ export default function ParentSchedulePage() {
         </div>
       </main>
 
-      {/* Details Modal */}
       {selectedSession && (
         <SessionDetailsModal
           session={selectedSession}
-          onClose={() => setSelectedSession(null)}
-          onProfile={() =>
-            navigate(`/teacher-profile/${selectedSession.teacherId}`)
-          }
+          confirming={confirming}
+          error={confirmError}
+          onConfirm={() => handleConfirm(selectedSession)}
+          onClose={() => setSelectedSessionId(null)}
         />
       )}
     </div>
   );
 }
+
+/* ========================================================= */
+/* SMALL COMPONENTS                                            */
+/* ========================================================= */
 
 function StatCard({ icon: Icon, label, value }) {
   return (
@@ -611,7 +674,7 @@ function StatCard({ icon: Icon, label, value }) {
 }
 
 function SessionCard({ session, onDetails }) {
-  const config = statusConfig[session.status] || statusConfig.scheduled;
+  const config = statusConfig[session.state] || statusConfig.scheduled;
   const StatusIcon = config.icon;
 
   return (
@@ -622,17 +685,13 @@ function SessionCard({ session, onDetails }) {
           <div className="text-lg font-bold text-gray-900">
             {session.startTime}
           </div>
-          <div className="text-xs text-gray-500">
-            until {session.endTime}
-          </div>
+          <div className="text-xs text-gray-500">until {session.endTime}</div>
         </div>
 
         {/* Main info */}
         <div className="min-w-0 flex-1 border-l-0 md:border-l md:border-gray-100 md:pl-4">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-gray-900">
-              {session.subject}
-            </h3>
+            <h3 className="font-semibold text-gray-900">{session.subject}</h3>
 
             <span
               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${config.className}`}
@@ -654,11 +713,7 @@ function SessionCard({ session, onDetails }) {
             </span>
 
             <span className="inline-flex items-center gap-1.5">
-              {session.type === "online" ? (
-                <Video size={15} />
-              ) : (
-                <MapPin size={15} />
-              )}
+              <MapPin size={15} />
               {session.location}
             </span>
           </div>
@@ -666,6 +721,7 @@ function SessionCard({ session, onDetails }) {
 
         {/* Action */}
         <button
+          type="button"
           onClick={onDetails}
           className="inline-flex items-center justify-center rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
         >
@@ -683,9 +739,7 @@ function EmptyDay() {
         <CalendarDays size={28} className="text-gray-400" />
       </div>
 
-      <h3 className="mt-4 font-semibold text-gray-900">
-        No session scheduled
-      </h3>
+      <h3 className="mt-4 font-semibold text-gray-900">No session scheduled</h3>
 
       <p className="mt-1 max-w-sm text-sm text-gray-500">
         There are no tutoring sessions matching your filters for this day.
@@ -702,9 +756,15 @@ function EmptyDay() {
   );
 }
 
-function SessionDetailsModal({ session, onClose, onProfile }) {
-  const config = statusConfig[session.status] || statusConfig.scheduled;
+function SessionDetailsModal({ session, confirming, error, onConfirm, onClose }) {
+  const config = statusConfig[session.state] || statusConfig.scheduled;
   const StatusIcon = config.icon;
+
+  // On ne propose la confirmation qu'une fois la séance commencée.
+  const hasStarted = session.start <= new Date();
+  const canConfirm =
+    (session.state === "scheduled" || session.state === "awaiting") &&
+    !session.confirmedByParent;
 
   return (
     <div
@@ -713,19 +773,19 @@ function SessionDetailsModal({ session, onClose, onProfile }) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-xl">
+      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-100 p-5">
           <div>
-            <p className="text-xs font-medium text-gray-500">
-              Session {session.id}
-            </p>
+            <p className="text-xs font-medium text-gray-500">Session details</p>
             <h2 className="mt-1 text-xl font-bold text-gray-900">
               {session.subject}
             </h2>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close"
             className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
           >
             <X size={20} />
@@ -753,64 +813,53 @@ function SessionDetailsModal({ session, onClose, onProfile }) {
               value={`${session.startTime} - ${session.endTime}`}
             />
 
-            <InfoItem
-              icon={UserRound}
-              label="Teacher"
-              value={session.teacher}
-            />
+            <InfoItem icon={UserRound} label="Teacher" value={session.teacher} />
 
-            <InfoItem
-              icon={GraduationCap}
-              label="Child"
-              value={session.child}
-            />
+            <InfoItem icon={GraduationCap} label="Child" value={session.child} />
 
-            <InfoItem
-              icon={BookOpen}
-              label="Level"
-              value={session.level}
-            />
+            <InfoItem icon={BookOpen} label="Subject" value={session.subject} />
 
-            <InfoItem
-              icon={session.type === "online" ? Video : MapPin}
-              label="Location"
-              value={session.address}
-            />
+            <InfoItem icon={MapPin} label="Location" value={session.location} />
           </div>
 
-          <div className="rounded-xl bg-gray-50 p-4">
+          <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Session notes
+              Confirmations
             </p>
-            <p className="mt-2 text-sm leading-6 text-gray-700">
-              {session.notes}
+            <p className="mt-2">
+              Teacher: {session.confirmedByTeacher ? "confirmed" : "not yet"} ·
+              You: {session.confirmedByParent ? "confirmed" : "not yet"}
+            </p>
+            <p className="mt-1 text-xs text-gray-400">
+              A session is completed once both of you have confirmed it.
             </p>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              onClick={onProfile}
-              className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              View Teacher Profile
-            </button>
+          {error && (
+            <p role="alert" className="text-sm text-red-600">
+              {error}
+            </p>
+          )}
 
-            {session.type === "online" &&
-              (session.status === "scheduled" ||
-                session.status === "confirmed") && (
-                <button
-                  onClick={() => {
-                    alert(
-                      "The online meeting link will be available when the session is connected to the backend."
-                    );
-                  }}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#5D3DE0]"
-                >
-                  <Video size={17} />
-                  Join Session
-                </button>
+          {canConfirm && (
+            <div>
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={!hasStarted || confirming}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#5D3DE0] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <CheckCircle2 size={17} />
+                {confirming ? "Confirming…" : "Confirm the session took place"}
+              </button>
+
+              {!hasStarted && (
+                <p className="mt-2 text-center text-xs text-gray-400">
+                  You can confirm once the session has started.
+                </p>
               )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
