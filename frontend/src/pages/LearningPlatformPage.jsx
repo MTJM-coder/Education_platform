@@ -1,381 +1,279 @@
-import React, { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   BookOpen,
-  PlayCircle,
   FileText,
-  ClipboardCheck,
   Clock3,
   ChevronRight,
   GraduationCap,
-  Target,
-  Award,
-  TrendingUp,
   X,
-  CheckCircle2,
-  UsersRound,
-  Menu,
   Sparkles,
+  Library,
+  CalendarDays,
+  UserRound,
+  ExternalLink,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import ParentSidebar from "../components/parent/ParentSidebar";
+import { apiFetch } from "../lib/apiClient";
 
-const childrenData = [
-  {
-    id: 1,
-    name: "Doly Junior",
-    level: "Secondary",
-    className: "Form 4",
-  },
-  {
-    id: 2,
-    name: "Mireille Djoumesse",
-    level: "Secondary",
-    className: "Form 5",
-  },
-];
+/* -------------------------------------------------- */
+/* Helpers */
+/* -------------------------------------------------- */
 
-const coursesData = [
-  {
-    id: "MAT-001",
-    title: "Mathematics Mastery",
-    subject: "Mathematics",
-    teacher: "Xavier Ndi",
-    progress: 68,
-    lessons: 24,
-    completedLessons: 16,
-    duration: "12h",
-    level: "Intermediate",
-    enrolled: 120,
-    description:
-      "Strengthen algebra, geometry, equations and problem-solving skills.",
-    color: "purple",
-    children: [1, 2],
-  },
-  {
-    id: "PHY-001",
-    title: "Physics Fundamentals",
-    subject: "Physics",
-    teacher: "Nfor Grace",
-    progress: 42,
-    lessons: 18,
-    completedLessons: 8,
-    duration: "10h",
-    level: "Intermediate",
-    enrolled: 86,
-    description:
-      "Understand mechanics, electricity, energy and fundamental physics concepts.",
-    color: "blue",
-    children: [1, 2],
-  },
-  {
-    id: "ENG-001",
-    title: "English Communication",
-    subject: "English",
-    teacher: "Acha Mireille",
-    progress: 84,
-    lessons: 20,
-    completedLessons: 17,
-    duration: "8h",
-    level: "Intermediate",
-    enrolled: 94,
-    description:
-      "Improve grammar, vocabulary, reading comprehension and communication.",
-    color: "green",
-    children: [1],
-  },
-  {
-    id: "CSC-001",
-    title: "Computer Science Basics",
-    subject: "Computer Science",
-    teacher: "Bih Patrick",
-    progress: 56,
-    lessons: 16,
-    completedLessons: 9,
-    duration: "7h",
-    level: "Beginner",
-    enrolled: 73,
-    description:
-      "Learn programming fundamentals, algorithms and computer concepts.",
-    color: "orange",
-    children: [1, 2],
-  },
-  {
-    id: "FRE-001",
-    title: "French Essentials",
-    subject: "French",
-    teacher: "Ngoe Laure",
-    progress: 32,
-    lessons: 15,
-    completedLessons: 5,
-    duration: "6h",
-    level: "Beginner",
-    enrolled: 61,
-    description:
-      "Build vocabulary, grammar and written French skills step by step.",
-    color: "pink",
-    children: [2],
-  },
-];
+// Accepte [..], { data: [..] } ou { data: { data: [..] } } selon apiFetch.
+function toList(response) {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  return [];
+}
 
-const resourcesData = [
-  {
-    id: "RES-001",
-    title: "Algebra — Equations and Inequalities",
-    subject: "Mathematics",
-    type: "video",
-    duration: "18 min",
-    course: "MAT-001",
-  },
-  {
-    id: "RES-002",
-    title: "Physics Formula Sheet",
-    subject: "Physics",
-    type: "pdf",
-    duration: "8 pages",
-    course: "PHY-001",
-  },
-  {
-    id: "RES-003",
-    title: "English Grammar Quiz",
-    subject: "English",
-    type: "quiz",
-    duration: "15 questions",
-    course: "ENG-001",
-  },
-  {
-    id: "RES-004",
-    title: "Introduction to Algorithms",
-    subject: "Computer Science",
-    type: "video",
-    duration: "24 min",
-    course: "CSC-001",
-  },
-];
+function getUserName(user) {
+  if (!user) return null;
+  if (user.name) return user.name;
+  const full = [user.first_name, user.last_name].filter(Boolean).join(" ");
+  return full || null;
+}
 
-const modulesData = [
-  "Introduction",
-  "Core Concepts",
-  "Practice Exercises",
-  "Quiz & Assessment",
-  "Revision",
-];
+function getLearnerName(learner) {
+  if (!learner) return "Student";
+  const own = [learner.first_name, learner.last_name].filter(Boolean).join(" ");
+  if (own) return own;
+  return getUserName(learner.user) ?? "Student";
+}
 
-const getResourceIcon = (type) => {
-  if (type === "video") return PlayCircle;
-  if (type === "pdf") return FileText;
-  return ClipboardCheck;
-};
+// Après le correctif de GET /lecture-notes : `teacher_name`.
+// Avant : ancien format (teacher.user), conservé en repli.
+function getTeacherName(note) {
+  return note.teacher_name || getUserName(note.teacher?.user) || "Teacher";
+}
 
-const getColorClasses = (color) => {
-  const colors = {
-    purple: "bg-purple-50 text-purple-600",
-    blue: "bg-blue-50 text-blue-600",
-    green: "bg-green-50 text-green-600",
-    orange: "bg-orange-50 text-orange-600",
-    pink: "bg-pink-50 text-pink-600",
-  };
+// Les fichiers sont sur le disque public : /storage/{chemin}.
+function buildFileUrl(fileUrl) {
+  if (!fileUrl) return null;
+  const base = (import.meta.env.VITE_API_URL ?? "").replace(/\/api\/?$/, "");
+  return `${base}/storage/${fileUrl}`;
+}
 
-  return colors[color] || colors.purple;
-};
+function fileKind(fileUrl) {
+  const extension = String(fileUrl ?? "").split(".").pop().toLowerCase();
+  if (extension === "pdf") return "pdf";
+  if (extension === "doc" || extension === "docx") return "word";
+  return "other";
+}
+
+const KIND_LABEL = { pdf: "PDF", word: "Word", other: "File" };
+
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function isThisMonth(value) {
+  const date = new Date(value);
+  const now = new Date();
+  return (
+    !Number.isNaN(date.getTime()) &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear()
+  );
+}
+
+/* -------------------------------------------------- */
+/* Page */
+/* -------------------------------------------------- */
 
 export default function LearningPlatformPage() {
-  const navigate = useNavigate();
+  const [children, setChildren] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [selectedChild, setSelectedChild] = useState(1);
+  const [selectedChild, setSelectedChild] = useState("");
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("All");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [activeTab, setActiveTab] = useState("All");
-  const [selectedCourse, setSelectedCourse] = useState(null);
-  const [selectedResource, setSelectedResource] = useState(null);
+  const [onlyChildLevel, setOnlyChildLevel] = useState(true);
+  const [selectedNote, setSelectedNote] = useState(null);
 
-  const subjects = [
-    "All",
-    ...new Set(coursesData.map((course) => course.subject)),
-  ];
+  useEffect(() => {
+    let cancelled = false;
 
-  const childCourses = useMemo(() => {
-    return coursesData.filter((course) =>
-      course.children.includes(Number(selectedChild))
+    const load = async () => {
+      try {
+        const [childrenRes, notesRes] = await Promise.all([
+          apiFetch("/me/children"),
+          apiFetch("/lecture-notes"),
+        ]);
+
+        if (cancelled) return;
+
+        const childList = toList(childrenRes);
+        setChildren(childList);
+        setNotes(toList(notesRes));
+        if (childList.length > 0) setSelectedChild(childList[0].id);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err?.message || "Unable to load the learning resources.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const child = children.find((item) => item.id === selectedChild) ?? null;
+  const childName = child ? getLearnerName(child) : "your child";
+  const childLevelId = child?.level_id ?? child?.level?.id ?? null;
+  const childLevelName = child?.level?.name ?? null;
+
+  // Notes du niveau de l'enfant (ou toutes, si la case est décochée).
+  const levelNotes = useMemo(() => {
+    if (!onlyChildLevel || !childLevelId) return notes;
+
+    return notes.filter((note) =>
+      (note.subject?.levels ?? []).some((level) => level.id === childLevelId)
     );
-  }, [selectedChild]);
+  }, [notes, onlyChildLevel, childLevelId]);
 
-  const filteredCourses = useMemo(() => {
-    return childCourses.filter((course) => {
+  const subjects = useMemo(
+    () => [
+      "All",
+      ...Array.from(
+        new Set(levelNotes.map((note) => note.subject?.name).filter(Boolean))
+      ).sort(),
+    ],
+    [levelNotes]
+  );
+
+  const filteredNotes = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return levelNotes.filter((note) => {
       const matchesSearch =
-        course.title.toLowerCase().includes(search.toLowerCase()) ||
-        course.subject.toLowerCase().includes(search.toLowerCase()) ||
-        course.teacher.toLowerCase().includes(search.toLowerCase());
+        !query ||
+        (note.title ?? "").toLowerCase().includes(query) ||
+        (note.subject?.name ?? "").toLowerCase().includes(query) ||
+        getTeacherName(note).toLowerCase().includes(query);
 
       const matchesSubject =
-        subjectFilter === "All" || course.subject === subjectFilter;
+        subjectFilter === "All" || note.subject?.name === subjectFilter;
 
-      const matchesStatus =
-        statusFilter === "All" ||
-        (statusFilter === "In Progress" &&
-          course.progress > 0 &&
-          course.progress < 100) ||
-        (statusFilter === "Completed" && course.progress === 100);
-
-      const matchesTab =
-        activeTab === "All" ||
-        (activeTab === "In Progress" &&
-          course.progress > 0 &&
-          course.progress < 100) ||
-        (activeTab === "Completed" && course.progress === 100);
-
-      return (
-        matchesSearch &&
-        matchesSubject &&
-        matchesStatus &&
-        matchesTab
-      );
+      return matchesSearch && matchesSubject;
     });
-  }, [
-    childCourses,
-    search,
-    subjectFilter,
-    statusFilter,
-    activeTab,
-  ]);
+  }, [levelNotes, search, subjectFilter]);
 
-  const continueCourse = useMemo(() => {
-    return [...childCourses]
-      .filter((course) => course.progress < 100)
-      .sort((a, b) => b.progress - a.progress)[0];
-  }, [childCourses]);
+  const stats = useMemo(
+    () => ({
+      resources: levelNotes.length,
+      subjects: new Set(levelNotes.map((note) => note.subject?.name).filter(Boolean)).size,
+      recent: levelNotes.filter((note) => isThisMonth(note.created_at)).length,
+    }),
+    [levelNotes]
+  );
 
-  const totalCourses = childCourses.length;
+  const changeChild = (id) => {
+    setSelectedChild(id);
+    setSubjectFilter("All");
+    setSearch("");
+  };
 
-  const completedCourses = childCourses.filter(
-    (course) => course.progress === 100
-  ).length;
-
-  const inProgressCourses = childCourses.filter(
-    (course) => course.progress > 0 && course.progress < 100
-  ).length;
-
-  const learningHours = childCourses.reduce((total, course) => {
-    return total + parseFloat(course.duration);
-  }, 0);
-
-  const scrollToExamPreparation = () => {
-    document
-      .getElementById("exam-preparation")
-      ?.scrollIntoView({ behavior: "smooth" });
+  const scrollToResources = () => {
+    document.getElementById("resources")?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
     <div className="min-h-screen bg-[#F8F8FA]">
-      {/* Mobile overlay */}
-      {mobileSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          onClick={() => setMobileSidebarOpen(false)}
-        />
-      )}
+      <ParentSidebar />
 
-      {/* Sidebar */}
-      <div
-        className={`
-          fixed inset-y-0 left-0 z-50 w-72 transform bg-white transition-transform duration-300
-          lg:translate-x-0
-          ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-        `}
-      >
-        <ParentSidebar />
-
-        <button
-          onClick={() => setMobileSidebarOpen(false)}
-          className="absolute right-3 top-3 rounded-lg p-2 text-gray-500 hover:bg-gray-100 lg:hidden"
-        >
-          <X size={20} />
-        </button>
-      </div>
-
-      {/* Main */}
-      <main className="lg:ml-72">
+      <main className="lg:ml-64">
         {/* Header */}
         <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 backdrop-blur">
           <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setMobileSidebarOpen(true)}
-                className="rounded-xl border border-gray-200 p-2 lg:hidden"
-              >
-                <Menu size={20} />
-              </button>
-
-              <div>
-                <div className="hidden text-sm text-gray-500 sm:block">
-                  Dashboard / Learning Platform
-                </div>
-
-                <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
-                  Learning Platform
-                </h1>
+            <div>
+              <div className="hidden text-sm text-gray-500 sm:block">
+                Dashboard / Learning Platform
               </div>
+
+              <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                Learning Platform
+              </h1>
             </div>
 
-            <div className="flex items-center gap-3">
-              <label className="hidden text-sm font-medium text-gray-600 sm:block">
-                Learning for
-              </label>
+            {children.length > 0 && (
+              <div className="flex items-center gap-3">
+                <label
+                  htmlFor="learning-child"
+                  className="hidden text-sm font-medium text-gray-600 sm:block"
+                >
+                  Learning for
+                </label>
 
-              <select
-                value={selectedChild}
-                onChange={(e) => setSelectedChild(Number(e.target.value))}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium outline-none focus:border-[#6D4AFF]"
-              >
-                {childrenData.map((child) => (
-                  <option key={child.id} value={child.id}>
-                    {child.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <select
+                  id="learning-child"
+                  value={selectedChild}
+                  onChange={(e) => changeChild(e.target.value)}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium outline-none focus:border-[#6D4AFF]"
+                >
+                  {children.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {getLearnerName(item)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </header>
 
         <div className="space-y-8 p-4 sm:p-6 lg:p-8">
+          {error && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-600"
+            >
+              {error}
+            </div>
+          )}
+
           {/* Hero */}
           <section className="overflow-hidden rounded-3xl bg-[#6D4AFF] p-6 text-white shadow-sm sm:p-8">
             <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
               <div className="max-w-2xl">
                 <div className="mb-3 flex items-center gap-2 text-purple-100">
                   <Sparkles size={18} />
-                  <span className="text-sm font-medium">
-                    Personalized learning
-                  </span>
+                  <span className="text-sm font-medium">Learning resources</span>
                 </div>
 
                 <h2 className="text-2xl font-bold sm:text-3xl">
-                  Help {childrenData.find((c) => c.id === selectedChild)?.name}{" "}
-                  learn better.
+                  Help {childName} learn better.
                 </h2>
 
                 <p className="mt-3 max-w-xl text-sm leading-6 text-purple-100 sm:text-base">
-                  Access courses, videos, documents, quizzes and revision
-                  resources in one place.
+                  Course notes written by our validated teachers
+                  {childLevelName ? `, for ${childLevelName}` : ""}. Open them,
+                  read them and revise at your own pace.
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-3">
                   <button
-                    onClick={() =>
-                      continueCourse && setSelectedCourse(continueCourse)
-                    }
+                    type="button"
+                    onClick={scrollToResources}
                     className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#6D4AFF] transition hover:bg-purple-50"
                   >
-                    Continue Learning
-                  </button>
-
-                  <button
-                    onClick={scrollToExamPreparation}
-                    className="rounded-xl border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
-                  >
-                    Exam Preparation
+                    Browse resources
                   </button>
                 </div>
               </div>
@@ -387,102 +285,35 @@ export default function LearningPlatformPage() {
           </section>
 
           {/* Stats */}
-          <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatCard
+              icon={Library}
+              label="Resources available"
+              value={loading ? "—" : stats.resources}
+            />
+
             <StatCard
               icon={BookOpen}
-              label="My Courses"
-              value={totalCourses}
-            />
-
-            <StatCard
-              icon={TrendingUp}
-              label="In Progress"
-              value={inProgressCourses}
-            />
-
-            <StatCard
-              icon={CheckCircle2}
-              label="Completed"
-              value={completedCourses}
+              label="Subjects covered"
+              value={loading ? "—" : stats.subjects}
             />
 
             <StatCard
               icon={Clock3}
-              label="Learning Hours"
-              value={`${learningHours}h`}
+              label="Added this month"
+              value={loading ? "—" : stats.recent}
             />
           </section>
 
-          {/* Continue Learning */}
-          {continueCourse && (
-            <section>
-              <SectionTitle
-                title="Continue Learning"
-                subtitle="Pick up where you left off."
-              />
-
-              <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-                <div className="flex flex-col gap-5 md:flex-row md:items-center">
-                  <div
-                    className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${getColorClasses(
-                      continueCourse.color
-                    )}`}
-                  >
-                    <BookOpen size={28} />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-[#6D4AFF]">
-                        {continueCourse.subject}
-                      </span>
-
-                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">
-                        {continueCourse.level}
-                      </span>
-                    </div>
-
-                    <h3 className="mt-1 text-lg font-bold text-gray-900">
-                      {continueCourse.title}
-                    </h3>
-
-                    <p className="mt-1 text-sm text-gray-500">
-                      with {continueCourse.teacher}
-                    </p>
-
-                    <div className="mt-4 flex items-center gap-3">
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-                        <div
-                          className="h-full rounded-full bg-[#6D4AFF]"
-                          style={{
-                            width: `${continueCourse.progress}%`,
-                          }}
-                        />
-                      </div>
-
-                      <span className="text-sm font-semibold text-gray-700">
-                        {continueCourse.progress}%
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setSelectedCourse(continueCourse)}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-5 py-3 text-sm font-semibold text-white hover:bg-[#5d3de0]"
-                  >
-                    Continue
-                    <ChevronRight size={17} />
-                  </button>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Courses */}
-          <section>
+          {/* Resources */}
+          <section id="resources" className="scroll-mt-24">
             <SectionTitle
-              title="My Courses"
-              subtitle="Courses available for this learner."
+              title="Learning Resources"
+              subtitle={
+                onlyChildLevel && childLevelName
+                  ? `Course notes for ${childLevelName}.`
+                  : "Course notes for all levels."
+              }
             />
 
             {/* Filters */}
@@ -498,7 +329,7 @@ export default function LearningPlatformPage() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search courses, subjects or teachers..."
+                    placeholder="Search by title, subject or teacher..."
                     className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 text-sm outline-none focus:border-[#6D4AFF]"
                   />
                 </div>
@@ -506,202 +337,74 @@ export default function LearningPlatformPage() {
                 <select
                   value={subjectFilter}
                   onChange={(e) => setSubjectFilter(e.target.value)}
+                  aria-label="Subject"
                   className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#6D4AFF]"
                 >
                   {subjects.map((subject) => (
-                    <option key={subject}>{subject}</option>
+                    <option key={subject} value={subject}>
+                      {subject === "All" ? "All subjects" : subject}
+                    </option>
                   ))}
                 </select>
-
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#6D4AFF]"
-                >
-                  <option>All</option>
-                  <option>In Progress</option>
-                  <option>Completed</option>
-                </select>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {["All", "In Progress", "Completed"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                      activeTab === tab
-                        ? "bg-[#6D4AFF] text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    {tab}
-                  </button>
+              {childLevelId && (
+                <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={onlyChildLevel}
+                    onChange={(e) => {
+                      setOnlyChildLevel(e.target.checked);
+                      setSubjectFilter("All");
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 accent-purple-600"
+                  />
+                  Only show resources for {childLevelName ?? "my child's level"}
+                </label>
+              )}
+            </div>
+
+            {/* Grid */}
+            {loading ? (
+              <p className="py-16 text-center text-sm text-gray-400">
+                Loading resources…
+              </p>
+            ) : filteredNotes.length > 0 ? (
+              <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {filteredNotes.map((note) => (
+                  <ResourceCard
+                    key={note.id}
+                    note={note}
+                    onOpen={() => setSelectedNote(note)}
+                  />
                 ))}
               </div>
-            </div>
-
-            {/* Course grid */}
-            <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {filteredCourses.map((course) => (
-                <CourseCard
-                  key={course.id}
-                  course={course}
-                  onOpen={() => setSelectedCourse(course)}
-                />
-              ))}
-            </div>
-
-            {filteredCourses.length === 0 && (
+            ) : (
               <EmptyState
-                title="No courses found"
-                text="Try another search or change your filters."
+                title={notes.length === 0 ? "No resources yet" : "No resources found"}
+                text={
+                  notes.length === 0
+                    ? "Teachers' course notes will appear here once they are validated."
+                    : "Try another search, another subject, or show all levels."
+                }
               />
             )}
-          </section>
 
-          {/* Resources */}
-          <section>
-            <SectionTitle
-              title="Learning Resources"
-              subtitle="Videos, documents and quizzes."
-            />
-
-            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {resourcesData.map((resource) => {
-                const Icon = getResourceIcon(resource.type);
-
-                return (
-                  <button
-                    key={resource.id}
-                    onClick={() => setSelectedResource(resource)}
-                    className="group rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-purple-100 hover:shadow-md"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-[#6D4AFF]">
-                        <Icon size={21} />
-                      </div>
-
-                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs capitalize text-gray-500">
-                        {resource.type}
-                      </span>
-                    </div>
-
-                    <h3 className="mt-4 line-clamp-2 font-semibold text-gray-900">
-                      {resource.title}
-                    </h3>
-
-                    <p className="mt-2 text-sm text-gray-500">
-                      {resource.subject}
-                    </p>
-
-                    <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
-                      <span>{resource.duration}</span>
-
-                      <span className="flex items-center gap-1 font-medium text-[#6D4AFF]">
-                        Open
-                        <ChevronRight size={14} />
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* Exam Preparation */}
-          <section
-            id="exam-preparation"
-            className="scroll-mt-24 rounded-3xl border border-purple-100 bg-white p-6 shadow-sm sm:p-8"
-          >
-            <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
-              <div>
-                <div className="flex items-center gap-2 text-[#6D4AFF]">
-                  <Target size={20} />
-                  <span className="text-sm font-semibold">
-                    Exam Preparation
-                  </span>
-                </div>
-
-                <h2 className="mt-2 text-2xl font-bold text-gray-900">
-                  Prepare for upcoming exams
-                </h2>
-
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-                  Revision courses, practice questions, mock exams and
-                  performance tracking to help your child prepare effectively.
-                </p>
-              </div>
-
-              <button
-                onClick={() =>
-                  setSelectedCourse({
-                    id: "EXAM-001",
-                    title: "Exam Preparation",
-                    subject: "Exam Preparation",
-                    teacher: "Learning Team",
-                    progress: 25,
-                    lessons: 30,
-                    completedLessons: 8,
-                    duration: "15h",
-                    level: "All Levels",
-                    enrolled: 0,
-                    description:
-                      "Revision plans, practice questions and mock examinations.",
-                    color: "purple",
-                    children: [1, 2],
-                  })
-                }
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-5 py-3 text-sm font-semibold text-white hover:bg-[#5d3de0]"
-              >
-                Start Preparation
-                <ChevronRight size={17} />
-              </button>
-            </div>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-3">
-              <ExamFeature
-                icon={BookOpen}
-                title="Revision Courses"
-                text="Structured revision content."
-              />
-
-              <ExamFeature
-                icon={ClipboardCheck}
-                title="Practice Tests"
-                text="Train with exam-style questions."
-              />
-
-              <ExamFeature
-                icon={Award}
-                title="Track Progress"
-                text="Monitor preparation and results."
-              />
-            </div>
+            {!loading && children.length === 0 && (
+              <p className="mt-4 text-center text-sm text-gray-500">
+                Add a child in{" "}
+                <Link to="/parent-children" className="font-medium text-[#6D4AFF] hover:underline">
+                  My Children
+                </Link>{" "}
+                to see the resources for their level.
+              </p>
+            )}
           </section>
         </div>
       </main>
 
-      {/* Course modal */}
-      {selectedCourse && (
-        <CourseModal
-          course={selectedCourse}
-          onClose={() => setSelectedCourse(null)}
-          onContinue={() => {
-            setSelectedCourse(null);
-            alert(
-              `Opening "${selectedCourse.title}". This will later connect to the Learning Platform backend.`
-            );
-          }}
-        />
-      )}
-
-      {/* Resource modal */}
-      {selectedResource && (
-        <ResourceModal
-          resource={selectedResource}
-          onClose={() => setSelectedResource(null)}
-        />
+      {selectedNote && (
+        <ResourceModal note={selectedNote} onClose={() => setSelectedNote(null)} />
       )}
     </div>
   );
@@ -736,89 +439,60 @@ function SectionTitle({ title, subtitle }) {
   );
 }
 
-function CourseCard({ course, onOpen }) {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className={`h-2 ${getColorClasses(course.color)}`} />
+function ResourceCard({ note, onOpen }) {
+  const kind = fileKind(note.file_url);
+  const levels = (note.subject?.levels ?? []).map((level) => level.name).filter(Boolean);
 
-      <div className="p-5">
+  return (
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="h-2 bg-purple-50" />
+
+      <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-3">
-          <div
-            className={`flex h-12 w-12 items-center justify-center rounded-xl ${getColorClasses(
-              course.color
-            )}`}
-          >
-            <BookOpen size={23} />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 text-[#6D4AFF]">
+            <FileText size={23} />
           </div>
 
           <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">
-            {course.level}
+            {KIND_LABEL[kind]}
           </span>
         </div>
 
         <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-[#6D4AFF]">
-          {course.subject}
+          {note.subject?.name ?? "General"}
         </p>
 
         <h3 className="mt-1 min-h-[48px] text-lg font-bold text-gray-900">
-          {course.title}
+          {note.title}
         </h3>
 
-        <p className="mt-2 text-sm text-gray-500">
-          Teacher: {course.teacher}
-        </p>
+        <div className="mt-3 space-y-1.5 text-sm text-gray-500">
+          <p className="flex items-center gap-2">
+            <UserRound size={14} />
+            {getTeacherName(note)}
+          </p>
 
-        <p className="mt-3 line-clamp-2 text-sm leading-5 text-gray-500">
-          {course.description}
-        </p>
-
-        <div className="mt-5 flex items-center justify-between text-xs text-gray-500">
-          <span>{course.lessons} lessons</span>
-          <span>{course.duration}</span>
-          <span className="flex items-center gap-1">
-            <UsersRound size={13} />
-            {course.enrolled}
-          </span>
+          <p className="flex items-center gap-2">
+            <CalendarDays size={14} />
+            {formatDate(note.created_at)}
+          </p>
         </div>
 
-        <div className="mt-4">
-          <div className="mb-2 flex items-center justify-between text-xs">
-            <span className="text-gray-500">Progress</span>
-            <span className="font-semibold text-gray-700">
-              {course.progress}%
-            </span>
-          </div>
-
-          <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-            <div
-              className="h-full rounded-full bg-[#6D4AFF]"
-              style={{ width: `${course.progress}%` }}
-            />
-          </div>
-        </div>
+        {levels.length > 0 && (
+          <p className="mt-3 line-clamp-1 text-xs text-gray-400">
+            {levels.join(" · ")}
+          </p>
+        )}
 
         <button
+          type="button"
           onClick={onOpen}
           className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-[#6D4AFF] hover:text-[#6D4AFF]"
         >
-          View Course
+          Open resource
           <ChevronRight size={17} />
         </button>
       </div>
-    </div>
-  );
-}
-
-function ExamFeature({ icon: Icon, title, text }) {
-  return (
-    <div className="rounded-2xl bg-[#F8F8FA] p-4">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-[#6D4AFF]">
-        <Icon size={19} />
-      </div>
-
-      <h3 className="mt-3 font-semibold text-gray-900">{title}</h3>
-
-      <p className="mt-1 text-sm text-gray-500">{text}</p>
     </div>
   );
 }
@@ -835,95 +509,98 @@ function EmptyState({ title, text }) {
   );
 }
 
-function CourseModal({ course, onClose, onContinue }) {
+function ResourceModal({ note, onClose }) {
+  const kind = fileKind(note.file_url);
+  const url = buildFileUrl(note.file_url);
+  const levels = (note.subject?.levels ?? []).map((level) => level.name).filter(Boolean);
+
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-xl">
-        <div className="flex items-start justify-between border-b border-gray-100 p-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#6D4AFF]">
-              {course.subject}
-            </p>
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={note.title}
+        className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-xl"
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-gray-100 p-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-[#6D4AFF]">
+              <FileText size={23} />
+            </div>
 
-            <h2 className="mt-1 text-2xl font-bold text-gray-900">
-              {course.title}
-            </h2>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#6D4AFF]">
+                {note.subject?.name ?? "General"} · {KIND_LABEL[kind]}
+              </p>
 
-            <p className="mt-2 text-sm text-gray-500">
-              {course.description}
-            </p>
+              <h2 className="mt-1 text-xl font-bold text-gray-900">{note.title}</h2>
+            </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close"
             className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
           >
             <X size={20} />
           </button>
         </div>
 
-        <div className="space-y-6 p-6">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <InfoItem label="Teacher" value={course.teacher} />
-            <InfoItem label="Lessons" value={course.lessons} />
-            <InfoItem label="Duration" value={course.duration} />
-            <InfoItem label="Level" value={course.level} />
+        <div className="space-y-5 p-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <InfoItem label="Teacher" value={getTeacherName(note)} />
+            <InfoItem label="Added" value={formatDate(note.created_at)} />
+            <InfoItem label="Levels" value={levels.length ? levels.join(", ") : "—"} />
           </div>
 
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-600">
-                Course Progress
-              </span>
-
-              <span className="text-sm font-bold text-[#6D4AFF]">
-                {course.progress}%
-              </span>
-            </div>
-
-            <div className="h-3 overflow-hidden rounded-full bg-gray-100">
-              <div
-                className="h-full rounded-full bg-[#6D4AFF]"
-                style={{ width: `${course.progress}%` }}
+          {!url ? (
+            <p className="rounded-xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-400">
+              No file available for this resource.
+            </p>
+          ) : kind === "pdf" ? (
+            <>
+              <iframe
+                src={url}
+                title={note.title}
+                className="h-[60vh] w-full rounded-xl border border-gray-200 bg-white"
               />
+
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-medium text-[#6D4AFF] hover:underline"
+              >
+                <ExternalLink size={15} />
+                Open in a new tab
+              </a>
+            </>
+          ) : (
+            <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center">
+              <FileText className="mx-auto h-8 w-8 text-gray-300" />
+
+              <p className="mt-3 text-sm text-gray-500">
+                This document cannot be previewed in the browser. Open it to
+                read it.
+              </p>
+
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#6D4AFF] px-5 py-3 text-sm font-semibold text-white hover:bg-[#5d3de0]"
+              >
+                <ExternalLink size={16} />
+                Open / download
+              </a>
             </div>
-          </div>
-
-          <div>
-            <h3 className="font-semibold text-gray-900">Course Modules</h3>
-
-            <div className="mt-3 space-y-2">
-              {modulesData.map((module, index) => (
-                <div
-                  key={module}
-                  className="flex items-center gap-3 rounded-xl border border-gray-100 p-3"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-sm font-semibold text-[#6D4AFF]">
-                    {index + 1}
-                  </div>
-
-                  <span className="text-sm font-medium text-gray-700">
-                    {module}
-                  </span>
-
-                  {index < Math.floor(course.progress / 20) && (
-                    <CheckCircle2
-                      size={17}
-                      className="ml-auto text-green-500"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <button
-            onClick={onContinue}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-5 py-3.5 text-sm font-semibold text-white hover:bg-[#5d3de0]"
-          >
-            <PlayCircle size={18} />
-            Continue Learning
-          </button>
+          )}
         </div>
       </div>
     </div>
@@ -934,68 +611,7 @@ function InfoItem({ label, value }) {
   return (
     <div className="rounded-xl bg-[#F8F8FA] p-3">
       <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 truncate text-sm font-semibold text-gray-900">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function ResourceModal({ resource, onClose }) {
-  const Icon = getResourceIcon(resource.type);
-
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-50 text-[#6D4AFF]">
-              <Icon size={23} />
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase text-[#6D4AFF]">
-                {resource.type}
-              </p>
-
-              <h2 className="mt-1 font-bold text-gray-900">
-                {resource.title}
-              </h2>
-            </div>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="rounded-xl p-2 text-gray-400 hover:bg-gray-100"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="mt-6 rounded-2xl bg-[#F8F8FA] p-4">
-          <p className="text-sm text-gray-500">Subject</p>
-          <p className="mt-1 font-semibold text-gray-900">
-            {resource.subject}
-          </p>
-
-          <p className="mt-4 text-sm text-gray-500">Duration / size</p>
-          <p className="mt-1 font-semibold text-gray-900">
-            {resource.duration}
-          </p>
-        </div>
-
-        <button
-          onClick={() =>
-            alert(
-              `"${resource.title}" will open here once the Learning Platform backend/resource URL is connected.`
-            )
-          }
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-5 py-3.5 text-sm font-semibold text-white hover:bg-[#5d3de0]"
-        >
-          <Icon size={18} />
-          Open Resource
-        </button>
-      </div>
+      <p className="mt-1 truncate text-sm font-semibold text-gray-900">{value}</p>
     </div>
   );
 }

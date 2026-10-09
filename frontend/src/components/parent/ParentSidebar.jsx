@@ -29,16 +29,13 @@ const navigation = [
   { label: "Payments", icon: CreditCard, href: "/paiements" },
   { label: "Evaluations", icon: Star, href: "/laisser-un-avis" },
   { label: "Children Results", icon: BarChart3, href: "/resultats-scolaires" },
-  { label: "Progress", icon: BarChart3, href: "/child-progress" },
   { label: "Learning Platform", icon: BookOpen, href: "/learning-platform" },
-  { label: "Exam Preparation", icon: Target, href: "/learning-platform#exam-preparation" },
-  { label: "Awards", icon: Award, href: "/resultats-scolaires#awards" },
+  // { label: "Exam Preparation", icon: Target, href: "/learning-platform#exam-preparation" },
+  // { label: "Awards", icon: Award, href: "/resultats-scolaires#awards" },
 ];
 
 const accountNavigation = [
-  { label: "Notifications", icon: Bell, href: "/parametres#notifications" },
-  { label: "My Profile", icon: UserRound, href: "/parametres#profile" },
-  { label: "Settings", icon: Settings, href: "/parametres" },
+  { label: "my account", icon: Settings, href: "/parametres" },
 ];
 
 function NavigationLink({ item, pathname, hash, onNavigate }) {

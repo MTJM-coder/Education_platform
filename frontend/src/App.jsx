@@ -20,7 +20,6 @@ import DisputesPage from './pages/DisputesWorkspacePage';
 import LearningPlatformPage from './pages/LearningPlatformPage';
 import AccountSettingsPage from './pages/AccountSettingsPage';
 import ParentSchedulePage from './pages/ParentSchedulePage';
-import ParentProgressPage from './pages/ParentProgressPage';
 import StudentDashboardPage from './pages/StudentDashboardPage';
 import StudentLearningPage from './pages/StudentLearningPage';
 import StudentSubjectPage from './pages/StudentSubjectPage';
@@ -94,7 +93,6 @@ const App = () => {
           <Route path='/suivi-demande' element={<ParentTutoringRequestsPage />} />
           <Route path='/affectation' element={<AssignmentDetailPage />} />
           <Route path='/parent-schedule' element={<ParentSchedulePage />} />
-          <Route path='/child-progress' element={<ParentProgressPage />} />
           <Route path='/paiements' element={<ParentPaymentsPage />} />
           <Route path='/resultats-scolaires' element={<ChildResultsPage />} />
           <Route path='/laisser-un-avis' element={<LeaveReviewPage />} />
