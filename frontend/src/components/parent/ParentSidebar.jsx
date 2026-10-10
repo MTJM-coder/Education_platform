@@ -1,3 +1,4 @@
+import {Navigate} from "react-router-dom";
 import {
   Award,
   BarChart3,
@@ -13,12 +14,17 @@ import {
   Settings,
   Star,
   Target,
+  LogOut,
   UserRound,
   UsersRound,
   X,
+  ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
+
+
+
 
 const navigation = [
   { label: "Dashboard", icon: Home, href: "/parent-dashboard" },
@@ -47,11 +53,10 @@ function NavigationLink({ item, pathname, hash, onNavigate }) {
     <a
       href={item.href}
       onClick={onNavigate}
-      className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-        active
+      className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${active
           ? "bg-pf-purple text-white"
           : "text-[#5D5A65] hover:bg-pf-purple-light hover:text-pf-purple-dark"
-      }`}
+        }`}
     >
       <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
       <span className="font-medium">{item.label}</span>
@@ -60,6 +65,18 @@ function NavigationLink({ item, pathname, hash, onNavigate }) {
 }
 
 function SidebarContent({ onNavigate }) {
+  const [signingOut, setSigningOut] = useState(false);
+  const signOut = async () => {
+    setSigningOut(true);
+
+    try {
+      await apiFetch("/auth/logout", { method: "POST" });
+    } catch {
+      // Le jeton est peut-être déjà expiré : on quitte quand même la session.
+    } finally {
+      navigate("/login");
+    }
+  };
   const { pathname, hash } = useLocation();
 
   return (
@@ -85,6 +102,16 @@ function SidebarContent({ onNavigate }) {
           <NavigationLink key={item.label} item={item} pathname={pathname} hash={hash} onNavigate={onNavigate} />
         ))}
       </div>
+      <button
+        type="button"
+        onClick={signOut}
+        disabled={signingOut}
+        className="mt-6  inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 px-5 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <LogOut size={17} />
+        {signingOut ? "Signing out…" : "Sign out"}
+        <ChevronRight size={16} />
+      </button>
     </>
   );
 }

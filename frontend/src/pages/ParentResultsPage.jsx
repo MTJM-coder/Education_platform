@@ -1,215 +1,56 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Award,
   BarChart3,
   BookOpen,
   CalendarDays,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
   Download,
   Eye,
   FileText,
   GraduationCap,
-  Medal,
   Search,
   SlidersHorizontal,
   Sparkles,
   Target,
   TrendingUp,
-  Trophy,
   UserRound,
   X,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ParentSidebar from "../components/parent/ParentSidebar";
+import { apiFetch } from "../lib/apiClient";
 
-const childrenData = [
-  {
-    id: "1",
-    name: "Doly Junior",
-    className: "Form 4",
-    section: "Secondary",
-    average: 78,
-    previousAverage: 74,
-    photo: null,
-  },
-  {
-    id: "2",
-    name: "Mireille Djoumesse",
-    className: "Class 6",
-    section: "Primary",
-    average: 81,
-    previousAverage: 79,
-    photo: null,
-  },
-];
+/* -------------------------------------------------- */
+/* Helpers */
+/* -------------------------------------------------- */
 
-const resultsData = [
-  {
-    id: "RES-001",
-    learnerId: "1",
-    learner: "Doly Junior",
-    subject: "Mathematics",
-    teacher: "Xavier Ndi",
-    assessment: "Class Test 1",
-    term: "Term 1",
-    score: 78,
-    total: 100,
-    date: "2026-09-15",
-    rank: 6,
-    classSize: 32,
-    comment: "Good progress. Continue practising problem-solving exercises.",
-  },
-  {
-    id: "RES-002",
-    learnerId: "1",
-    learner: "Doly Junior",
-    subject: "Physics",
-    teacher: "Nfor Grace",
-    assessment: "Chapter Assessment",
-    term: "Term 1",
-    score: 64,
-    total: 100,
-    date: "2026-09-17",
-    rank: 14,
-    classSize: 32,
-    comment: "Review the main concepts and practise more numerical exercises.",
-  },
-  {
-    id: "RES-003",
-    learnerId: "1",
-    learner: "Doly Junior",
-    subject: "English",
-    teacher: "Acha Mireille",
-    assessment: "Grammar Test",
-    term: "Term 1",
-    score: 85,
-    total: 100,
-    date: "2026-09-19",
-    rank: 4,
-    classSize: 32,
-    comment: "Very good work. Keep improving vocabulary and writing skills.",
-  },
-  {
-    id: "RES-004",
-    learnerId: "1",
-    learner: "Doly Junior",
-    subject: "Computer Science",
-    teacher: "Bih Patrick",
-    assessment: "Practical Assessment",
-    term: "Term 1",
-    score: 72,
-    total: 100,
-    date: "2026-09-21",
-    rank: 8,
-    classSize: 32,
-    comment: "Good understanding of the practical concepts.",
-  },
-  {
-    id: "RES-005",
-    learnerId: "1",
-    learner: "Doly Junior",
-    subject: "French",
-    teacher: "Ngoe Laure",
-    assessment: "Written Test",
-    term: "Term 1",
-    score: 76,
-    total: 100,
-    date: "2026-09-22",
-    rank: 7,
-    classSize: 32,
-    comment: "Good effort. Work more on grammar and written expression.",
-  },
-  {
-    id: "RES-006",
-    learnerId: "2",
-    learner: "Mireille Djoumesse",
-    subject: "Mathematics",
-    teacher: "Xavier Ndi",
-    assessment: "Class Test 1",
-    term: "Term 1",
-    score: 82,
-    total: 100,
-    date: "2026-09-15",
-    rank: 4,
-    classSize: 28,
-    comment: "Very good understanding of the exercises.",
-  },
-  {
-    id: "RES-007",
-    learnerId: "2",
-    learner: "Mireille Djoumesse",
-    subject: "English",
-    teacher: "Acha Mireille",
-    assessment: "Reading Comprehension",
-    term: "Term 1",
-    score: 88,
-    total: 100,
-    date: "2026-09-18",
-    rank: 2,
-    classSize: 28,
-    comment: "Excellent reading comprehension and vocabulary.",
-  },
-  {
-    id: "RES-008",
-    learnerId: "2",
-    learner: "Mireille Djoumesse",
-    subject: "French",
-    teacher: "Ngoe Laure",
-    assessment: "Grammar Test",
-    term: "Term 1",
-    score: 75,
-    total: 100,
-    date: "2026-09-20",
-    rank: 8,
-    classSize: 28,
-    comment: "Good work. Continue practising grammar rules.",
-  },
-  {
-    id: "RES-009",
-    learnerId: "2",
-    learner: "Mireille Djoumesse",
-    subject: "Science",
-    teacher: "Talla Eric",
-    assessment: "Science Assessment",
-    term: "Term 1",
-    score: 79,
-    total: 100,
-    date: "2026-09-23",
-    rank: 5,
-    classSize: 28,
-    comment: "Good understanding of the lessons covered.",
-  },
-];
+// Accepte [..], { data: [..] } ou { data: { data: [..] } } selon apiFetch.
+function toList(response) {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  return [];
+}
 
-const awardsData = [
-  {
-    id: "AWD-001",
-    learnerId: "1",
-    learner: "Doly Junior",
-    title: "Most Progressive Student",
-    category: "Progress",
-    date: "2026-09-25",
-    description:
-      "Recognised for consistent improvement and commitment to learning.",
-    reward: "School supplies",
-  },
-  {
-    id: "AWD-002",
-    learnerId: "2",
-    learner: "Mireille Djoumesse",
-    title: "Excellent Attendance",
-    category: "Commitment",
-    date: "2026-09-26",
-    description:
-      "Recognised for regular attendance and participation in learning sessions.",
-    reward: "Certificate of recognition",
-  },
-];
+function getUserName(user) {
+  if (!user) return null;
+  if (user.name) return user.name;
+  const full = [user.first_name, user.last_name].filter(Boolean).join(" ");
+  return full || null;
+}
 
-const terms = ["All Terms", "Term 1", "Term 2", "Term 3"];
+function getLearnerName(learner) {
+  if (!learner) return "Student";
+  const own = [learner.first_name, learner.last_name].filter(Boolean).join(" ");
+  if (own) return own;
+  return getUserName(learner.user) ?? "Student";
+}
 
+// Les notes sont sur 100 : le score est directement le pourcentage.
+const TOTAL = 100;
+
+// Barème de la maquette, utilisé seulement si l'enseignant n'a pas saisi de grade.
 const getGrade = (score) => {
   if (score >= 90) return "A";
   if (score >= 80) return "B";
@@ -226,15 +67,54 @@ const getScoreColor = (score) => {
   return "text-red-600 bg-red-50";
 };
 
-const formatDate = (date) => {
-  if (!date) return "—";
+const getBarColor = (score) => {
+  if (score >= 80) return "bg-emerald-500";
+  if (score >= 70) return "bg-blue-500";
+  if (score >= 60) return "bg-amber-500";
+  return "bg-red-500";
+};
 
-  return new Date(`${date}T12:00:00`).toLocaleDateString("en-GB", {
+const formatDate = (value) => {
+  if (!value) return "—";
+  const date = new Date(
+    String(value).length === 10 ? `${value}T12:00:00` : value
+  );
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
 };
+
+const initialsOf = (name) =>
+  String(name)
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+function toRow(result, learnerName) {
+  const evaluation = result.evaluation;
+  const score = Number(result.score);
+
+  return {
+    id: result.id,
+    learnerId: result.learner_id,
+    learner: learnerName,
+    subject: evaluation?.subject?.name ?? "—",
+    teacher: getUserName(result.teacher?.user) ?? "—",
+    assessment: evaluation?.title ?? "Assessment",
+    term: result.term ?? null,
+    score: Number.isFinite(score) ? score : null,
+    grade: result.grade ?? null,
+    date: String(evaluation?.eval_date ?? result.created_at ?? "").slice(0, 10) || null,
+    comment: result.comments ?? "",
+  };
+}
 
 const StatCard = ({ icon: Icon, label, value, subtitle, color }) => (
   <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -242,9 +122,7 @@ const StatCard = ({ icon: Icon, label, value, subtitle, color }) => (
       <div>
         <p className="text-sm text-gray-500">{label}</p>
         <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
-        {subtitle && (
-          <p className="mt-1 text-xs text-gray-500">{subtitle}</p>
-        )}
+        {subtitle && <p className="mt-1 text-xs text-gray-500">{subtitle}</p>}
       </div>
 
       <div className={`rounded-xl p-3 ${color}`}>
@@ -254,75 +132,162 @@ const StatCard = ({ icon: Icon, label, value, subtitle, color }) => (
   </div>
 );
 
+/* -------------------------------------------------- */
+/* Page */
+/* -------------------------------------------------- */
+
 export default function ParentResultsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const initialLearner = searchParams.get("learner") || "all";
 
+  const [children, setChildren] = useState([]);
+  const [resultsByChild, setResultsByChild] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const [selectedChild, setSelectedChild] = useState(initialLearner);
   const [selectedTerm, setSelectedTerm] = useState("All Terms");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedResult, setSelectedResult] = useState(null);
-  const [showAwards, setShowAwards] = useState(false);
-  const [selectedAward, setSelectedAward] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const childrenRes = await apiFetch("/me/children");
+        const childList = toList(childrenRes);
+
+        // Résultats de chaque enfant : un échec n'empêche pas d'afficher le reste.
+        const settled = await Promise.allSettled(
+          childList.map((child) => apiFetch(`/learners/${child.id}/results`))
+        );
+
+        if (cancelled) return;
+
+        const results = {};
+        let failures = 0;
+
+        childList.forEach((child, index) => {
+          const outcome = settled[index];
+          if (outcome.status === "fulfilled") {
+            results[child.id] = toList(outcome.value);
+          } else {
+            results[child.id] = [];
+            failures += 1;
+          }
+        });
+
+        setChildren(childList);
+        setResultsByChild(results);
+
+        if (failures > 0) {
+          setError("Some results could not be loaded. Please try again later.");
+        }
+      } catch (err) {
+        if (!cancelled) setError(err?.message || "Unable to load the results.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const allRows = useMemo(
+    () =>
+      children
+        .flatMap((child) =>
+          (resultsByChild[child.id] ?? []).map((result) =>
+            toRow(result, getLearnerName(child))
+          )
+        )
+        .filter((row) => row.score !== null)
+        .sort((a, b) => String(b.date ?? "").localeCompare(String(a.date ?? ""))),
+    [children, resultsByChild]
+  );
+
+  const termOptions = useMemo(
+    () => [
+      "All Terms",
+      ...Array.from(new Set(allRows.map((row) => row.term).filter(Boolean))).sort(),
+    ],
+    [allRows]
+  );
 
   const filteredResults = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    return resultsData.filter((result) => {
-      const matchesChild =
-        selectedChild === "all" || result.learnerId === selectedChild;
-
-      const matchesTerm =
-        selectedTerm === "All Terms" || result.term === selectedTerm;
-
+    return allRows.filter((row) => {
+      const matchesChild = selectedChild === "all" || row.learnerId === selectedChild;
+      const matchesTerm = selectedTerm === "All Terms" || row.term === selectedTerm;
       const matchesSearch =
         !query ||
-        result.subject.toLowerCase().includes(query) ||
-        result.teacher.toLowerCase().includes(query) ||
-        result.assessment.toLowerCase().includes(query) ||
-        result.learner.toLowerCase().includes(query);
+        row.subject.toLowerCase().includes(query) ||
+        row.teacher.toLowerCase().includes(query) ||
+        row.assessment.toLowerCase().includes(query) ||
+        row.learner.toLowerCase().includes(query);
 
       return matchesChild && matchesTerm && matchesSearch;
     });
-  }, [selectedChild, selectedTerm, searchQuery]);
-
-  const filteredAwards = useMemo(() => {
-    return awardsData.filter(
-      (award) =>
-        selectedChild === "all" || award.learnerId === selectedChild
-    );
-  }, [selectedChild]);
+  }, [allRows, selectedChild, selectedTerm, searchQuery]);
 
   const average =
     filteredResults.length > 0
       ? Math.round(
-          filteredResults.reduce(
-            (total, result) => total + (result.score / result.total) * 100,
-            0
-          ) / filteredResults.length
+          filteredResults.reduce((total, row) => total + row.score, 0) /
+            filteredResults.length
         )
-      : 0;
+      : null;
 
   const bestResult =
     filteredResults.length > 0
       ? filteredResults.reduce((best, current) =>
-          current.score / current.total > best.score / best.total
-            ? current
-            : best
+          current.score > best.score ? current : best
         )
       : null;
 
-  const attentionCount = filteredResults.filter(
-    (result) => (result.score / result.total) * 100 < 70
-  ).length;
+  const attentionCount = filteredResults.filter((row) => row.score < 70).length;
+
+  const subjectCount = new Set(
+    filteredResults.map((row) => row.subject).filter((name) => name !== "—")
+  ).size;
+
+  // Aperçu par enfant : moyenne calculée sur tous ses résultats.
+  const childSummaries = useMemo(
+    () =>
+      children.map((child) => {
+        const rows = allRows.filter((row) => row.learnerId === child.id);
+
+        return {
+          id: child.id,
+          name: getLearnerName(child),
+          className: child.classroom?.name ?? null,
+          levelName: child.level?.name ?? null,
+          count: rows.length,
+          average: rows.length
+            ? Math.round(rows.reduce((total, row) => total + row.score, 0) / rows.length)
+            : null,
+          lastDate: rows[0]?.date ?? null,
+        };
+      }),
+    [children, allRows]
+  );
+
+  const selectedChildInfo = childSummaries.find((child) => child.id === selectedChild);
 
   const resetFilters = () => {
     setSelectedChild("all");
     setSelectedTerm("All Terms");
     setSearchQuery("");
+    navigate("/resultats-scolaires");
   };
 
   const handleChildChange = (value) => {
@@ -331,7 +296,7 @@ export default function ParentResultsPage() {
     if (value === "all") {
       navigate("/resultats-scolaires");
     } else {
-      navigate(`/resultats-scolaires?learner=${value}`);
+      navigate(`/resultats-scolaires?learner=${encodeURIComponent(value)}`);
     }
   };
 
@@ -342,26 +307,23 @@ export default function ParentResultsPage() {
       "Assessment",
       "Teacher",
       "Term",
-      "Score",
-      "Total",
+      "Score (/100)",
+      "Grade",
       "Date",
-      "Rank",
     ];
 
-    const rows = filteredResults.map((result) => [
-      result.learner,
-      result.subject,
-      result.assessment,
-      result.teacher,
-      result.term,
-      result.score,
-      result.total,
-      result.date,
-      `${result.rank}/${result.classSize}`,
+    const rows = filteredResults.map((row) => [
+      row.learner,
+      row.subject,
+      row.assessment,
+      row.teacher,
+      row.term ?? "",
+      row.score,
+      row.grade ?? getGrade(row.score),
+      row.date ?? "",
     ]);
 
-    const escapeCSV = (value) =>
-      `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const escapeCSV = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
 
     const csvContent = [headers, ...rows]
       .map((row) => row.map(escapeCSV).join(","))
@@ -384,10 +346,8 @@ export default function ParentResultsPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F8FA]">
-      {/* Sidebar */}
       <ParentSidebar />
 
-      {/* Main content */}
       <div className="min-h-screen lg:ml-64">
         <main className="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
           {/* Header */}
@@ -404,31 +364,31 @@ export default function ParentResultsPage() {
               </h1>
 
               <p className="mt-2 text-sm text-gray-500 sm:text-base">
-                Follow your children’s academic performance and achievements.
+                Follow your children’s academic performance.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => setShowAwards(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-              >
-                <Trophy size={18} className="text-amber-500" />
-                Awards
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
-                  {filteredAwards.length}
-                </span>
-              </button>
-
-              <button
+                type="button"
                 onClick={handleExport}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#5b3ce0]"
+                disabled={filteredResults.length === 0}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#5b3ce0] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Download size={18} />
                 Export results
               </button>
             </div>
           </div>
+
+          {error && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-600"
+            >
+              {error}
+            </div>
+          )}
 
           {/* Child selector */}
           <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -439,11 +399,9 @@ export default function ParentResultsPage() {
                 </div>
 
                 <div>
-                  <h2 className="font-semibold text-gray-900">
-                    Select a child
-                  </h2>
+                  <h2 className="font-semibold text-gray-900">Select a child</h2>
                   <p className="mt-1 text-sm text-gray-500">
-                    View results for one child or compare all children.
+                    View results for one child or for all your children.
                   </p>
                 </div>
               </div>
@@ -460,15 +418,14 @@ export default function ParentResultsPage() {
                   <select
                     id="child-selector"
                     value={selectedChild}
-                    onChange={(event) =>
-                      handleChildChange(event.target.value)
-                    }
+                    onChange={(event) => handleChildChange(event.target.value)}
                     className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-4 py-3 pr-10 text-sm outline-none transition focus:border-[#6D4AFF] focus:ring-2 focus:ring-purple-100"
                   >
                     <option value="all">All children</option>
-                    {childrenData.map((child) => (
+                    {childSummaries.map((child) => (
                       <option key={child.id} value={child.id}>
-                        {child.name} — {child.className}
+                        {child.name}
+                        {child.className ? ` — ${child.className}` : ""}
                       </option>
                     ))}
                   </select>
@@ -481,30 +438,20 @@ export default function ParentResultsPage() {
               </div>
             </div>
 
-            {selectedChild !== "all" && (
+            {selectedChildInfo && (
               <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
-                {childrenData
-                  .filter((child) => child.id === selectedChild)
-                  .map((child) => (
-                    <React.Fragment key={child.id}>
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 font-bold text-[#6D4AFF]">
-                        {child.name
-                          .split(" ")
-                          .map((part) => part[0])
-                          .slice(0, 2)
-                          .join("")}
-                      </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 font-bold text-[#6D4AFF]">
+                  {initialsOf(selectedChildInfo.name)}
+                </div>
 
-                      <div>
-                        <p className="font-semibold text-gray-900">
-                          {child.name}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {child.section} · {child.className}
-                        </p>
-                      </div>
-                    </React.Fragment>
-                  ))}
+                <div>
+                  <p className="font-semibold text-gray-900">{selectedChildInfo.name}</p>
+                  <p className="text-sm text-gray-500">
+                    {[selectedChildInfo.levelName, selectedChildInfo.className]
+                      .filter(Boolean)
+                      .join(" · ") || "—"}
+                  </p>
+                </div>
               </div>
             )}
           </section>
@@ -514,15 +461,17 @@ export default function ParentResultsPage() {
             <StatCard
               icon={BarChart3}
               label="Average score"
-              value={`${average}%`}
-              subtitle={`${filteredResults.length} assessments`}
+              value={loading || average === null ? "—" : `${average}/100`}
+              subtitle={`${filteredResults.length} assessment${
+                filteredResults.length !== 1 ? "s" : ""
+              }`}
               color="bg-purple-50 text-[#6D4AFF]"
             />
 
             <StatCard
               icon={TrendingUp}
               label="Best performance"
-              value={bestResult ? `${bestResult.score}%` : "—"}
+              value={bestResult ? `${bestResult.score}/100` : "—"}
               subtitle={bestResult ? bestResult.subject : "No results available"}
               color="bg-emerald-50 text-emerald-600"
             />
@@ -530,16 +479,16 @@ export default function ParentResultsPage() {
             <StatCard
               icon={Target}
               label="Needs attention"
-              value={attentionCount}
-              subtitle="Assessments below 70%"
+              value={loading ? "—" : attentionCount}
+              subtitle="Assessments below 70"
               color="bg-amber-50 text-amber-600"
             />
 
             <StatCard
-              icon={Award}
-              label="Awards received"
-              value={filteredAwards.length}
-              subtitle="Recognitions and achievements"
+              icon={BookOpen}
+              label="Subjects assessed"
+              value={loading ? "—" : subjectCount}
+              subtitle="With at least one result"
               color="bg-blue-50 text-blue-600"
             />
           </section>
@@ -553,9 +502,7 @@ export default function ParentResultsPage() {
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-bold">
-                    Academic performance overview
-                  </h2>
+                  <h2 className="text-lg font-bold">Academic performance overview</h2>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-white/85">
                     Review assessment results regularly to identify strengths
                     and subjects where your child may need additional support.
@@ -563,13 +510,14 @@ export default function ParentResultsPage() {
                 </div>
               </div>
 
-              <button
+              {/* <button
+                type="button"
                 onClick={() => navigate("/child-progress")}
                 className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#6D4AFF] transition hover:bg-purple-50"
               >
                 View progress
                 <ChevronRight size={17} />
-              </button>
+              </button> */}
             </div>
           </section>
 
@@ -578,11 +526,9 @@ export default function ParentResultsPage() {
             <div className="border-b border-gray-100 p-5 sm:p-6">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Assessment results
-                  </h2>
+                  <h2 className="text-lg font-bold text-gray-900">Assessment results</h2>
                   <p className="mt-1 text-sm text-gray-500">
-                    Scores, subjects, teacher feedback and class rankings.
+                    Scores, subjects and teacher feedback.
                   </p>
                 </div>
 
@@ -603,6 +549,7 @@ export default function ParentResultsPage() {
                   </div>
 
                   <button
+                    type="button"
                     onClick={() => setShowFilters(!showFilters)}
                     className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition ${
                       showFilters
@@ -618,30 +565,37 @@ export default function ParentResultsPage() {
 
               {showFilters && (
                 <div className="mt-5 grid grid-cols-1 gap-4 rounded-xl bg-gray-50 p-4 sm:grid-cols-2">
-                  <div>
-                    <label
-                      htmlFor="term-filter"
-                      className="mb-2 block text-sm font-medium text-gray-700"
-                    >
-                      Academic term
-                    </label>
+                  {termOptions.length > 1 ? (
+                    <div>
+                      <label
+                        htmlFor="term-filter"
+                        className="mb-2 block text-sm font-medium text-gray-700"
+                      >
+                        Academic term
+                      </label>
 
-                    <select
-                      id="term-filter"
-                      value={selectedTerm}
-                      onChange={(event) => setSelectedTerm(event.target.value)}
-                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#6D4AFF]"
-                    >
-                      {terms.map((term) => (
-                        <option key={term} value={term}>
-                          {term}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      <select
+                        id="term-filter"
+                        value={selectedTerm}
+                        onChange={(event) => setSelectedTerm(event.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#6D4AFF]"
+                      >
+                        {termOptions.map((term) => (
+                          <option key={term} value={term}>
+                            {term}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <p className="self-center text-sm text-gray-500">
+                      No academic term has been recorded on these results yet.
+                    </p>
+                  )}
 
                   <div className="flex items-end">
                     <button
+                      type="button"
                       onClick={resetFilters}
                       className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
                     >
@@ -655,16 +609,13 @@ export default function ParentResultsPage() {
             <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
               <p className="text-sm text-gray-500">
                 Showing{" "}
-                <span className="font-semibold text-gray-900">
-                  {filteredResults.length}
-                </span>{" "}
+                <span className="font-semibold text-gray-900">{filteredResults.length}</span>{" "}
                 result{filteredResults.length !== 1 ? "s" : ""}
               </p>
 
-              {(selectedChild !== "all" ||
-                selectedTerm !== "All Terms" ||
-                searchQuery) && (
+              {(selectedChild !== "all" || selectedTerm !== "All Terms" || searchQuery) && (
                 <button
+                  type="button"
                   onClick={resetFilters}
                   className="text-sm font-semibold text-[#6D4AFF] hover:underline"
                 >
@@ -673,30 +624,39 @@ export default function ParentResultsPage() {
               )}
             </div>
 
-            {filteredResults.length === 0 ? (
+            {loading ? (
+              <p className="px-6 py-16 text-center text-sm text-gray-400">
+                Loading the results…
+              </p>
+            ) : filteredResults.length === 0 ? (
               <div className="px-6 py-16 text-center">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-gray-400">
                   <FileText size={25} />
                 </div>
 
                 <h3 className="mt-4 font-semibold text-gray-900">
-                  No results found
+                  {allRows.length === 0 ? "No result yet" : "No results found"}
                 </h3>
 
                 <p className="mt-2 text-sm text-gray-500">
-                  Try changing your search or filter criteria.
+                  {allRows.length === 0
+                    ? "Results appear here once a teacher has recorded a score."
+                    : "Try changing your search or filter criteria."}
                 </p>
 
-                <button
-                  onClick={resetFilters}
-                  className="mt-5 rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#5b3ce0]"
-                >
-                  Reset filters
-                </button>
+                {allRows.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="mt-5 rounded-xl bg-[#6D4AFF] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#5b3ce0]"
+                  >
+                    Reset filters
+                  </button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] text-left">
+                <table className="w-full min-w-[820px] text-left">
                   <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                     <tr>
                       <th className="px-6 py-4 font-semibold">Student</th>
@@ -704,117 +664,86 @@ export default function ParentResultsPage() {
                       <th className="px-6 py-4 font-semibold">Subject</th>
                       <th className="px-6 py-4 font-semibold">Score</th>
                       <th className="px-6 py-4 font-semibold">Grade</th>
-                      <th className="px-6 py-4 font-semibold">Class rank</th>
                       <th className="px-6 py-4 font-semibold">Date</th>
-                      <th className="px-6 py-4 text-right font-semibold">
-                        Action
-                      </th>
+                      <th className="px-6 py-4 text-right font-semibold">Action</th>
                     </tr>
                   </thead>
 
                   <tbody className="divide-y divide-gray-100">
-                    {filteredResults.map((result) => {
-                      const percentage = Math.round(
-                        (result.score / result.total) * 100
-                      );
-
-                      return (
-                        <tr
-                          key={result.id}
-                          className="transition hover:bg-gray-50/70"
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 text-sm font-bold text-[#6D4AFF]">
-                                {result.learner
-                                  .split(" ")
-                                  .map((part) => part[0])
-                                  .slice(0, 2)
-                                  .join("")}
-                              </div>
-
-                              <div>
-                                <p className="whitespace-nowrap text-sm font-semibold text-gray-900">
-                                  {result.learner}
-                                </p>
-                                <p className="mt-1 text-xs text-gray-500">
-                                  {result.term}
-                                </p>
-                              </div>
+                    {filteredResults.map((row) => (
+                      <tr key={row.id} className="transition hover:bg-gray-50/70">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 text-sm font-bold text-[#6D4AFF]">
+                              {initialsOf(row.learner)}
                             </div>
-                          </td>
 
-                          <td className="px-6 py-4">
-                            <p className="whitespace-nowrap text-sm font-medium text-gray-800">
-                              {result.assessment}
-                            </p>
-                            <p className="mt-1 text-xs text-gray-500">
-                              {result.teacher}
-                            </p>
-                          </td>
-
-                          <td className="px-6 py-4">
-                            <span className="whitespace-nowrap rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700">
-                              {result.subject}
-                            </span>
-                          </td>
-
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <span className="whitespace-nowrap text-sm font-bold text-gray-900">
-                                {result.score}/{result.total}
-                              </span>
-
-                              <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-gray-100 sm:block">
-                                <div
-                                  className={`h-full rounded-full ${
-                                    percentage >= 80
-                                      ? "bg-emerald-500"
-                                      : percentage >= 70
-                                        ? "bg-blue-500"
-                                        : percentage >= 60
-                                          ? "bg-amber-500"
-                                          : "bg-red-500"
-                                  }`}
-                                  style={{ width: `${percentage}%` }}
-                                />
-                              </div>
+                            <div>
+                              <p className="whitespace-nowrap text-sm font-semibold text-gray-900">
+                                {row.learner}
+                              </p>
+                              {row.term && (
+                                <p className="mt-1 text-xs text-gray-500">{row.term}</p>
+                              )}
                             </div>
-                          </td>
+                          </div>
+                        </td>
 
-                          <td className="px-6 py-4">
-                            <span
-                              className={`inline-flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold ${getScoreColor(
-                                percentage
-                              )}`}
-                            >
-                              {getGrade(percentage)}
+                        <td className="px-6 py-4">
+                          <p className="whitespace-nowrap text-sm font-medium text-gray-800">
+                            {row.assessment}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">{row.teacher}</p>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <span className="whitespace-nowrap rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700">
+                            {row.subject}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <span className="whitespace-nowrap text-sm font-bold text-gray-900">
+                              {row.score}/{TOTAL}
                             </span>
-                          </td>
 
-                          <td className="px-6 py-4">
-                            <span className="whitespace-nowrap text-sm text-gray-700">
-                              {result.rank}/{result.classSize}
-                            </span>
-                          </td>
+                            <div className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-gray-100 sm:block">
+                              <div
+                                className={`h-full rounded-full ${getBarColor(row.score)}`}
+                                style={{ width: `${Math.min(row.score, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
 
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                            {formatDate(result.date)}
-                          </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-xl px-2 text-sm font-bold ${getScoreColor(
+                              row.score
+                            )}`}
+                          >
+                            {row.grade ?? getGrade(row.score)}
+                          </span>
+                        </td>
 
-                          <td className="px-6 py-4 text-right">
-                            <button
-                              onClick={() => setSelectedResult(result)}
-                              title="View result details"
-                              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition hover:border-purple-200 hover:bg-purple-50 hover:text-[#6D4AFF]"
-                            >
-                              <Eye size={16} />
-                              Details
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                          {formatDate(row.date)}
+                        </td>
+
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedResult(row)}
+                            title="View result details"
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition hover:border-purple-200 hover:bg-purple-50 hover:text-[#6D4AFF]"
+                          >
+                            <Eye size={16} />
+                            Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -826,6 +755,7 @@ export default function ParentResultsPage() {
               </p>
 
               <button
+                type="button"
                 onClick={() => navigate("/parent-schedule")}
                 className="inline-flex items-center justify-center gap-2 text-sm font-semibold text-[#6D4AFF] hover:underline"
               >
@@ -837,86 +767,66 @@ export default function ParentResultsPage() {
           </section>
 
           {/* Children overview */}
-          {selectedChild === "all" && (
+          {selectedChild === "all" && childSummaries.length > 0 && (
             <section>
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Children’s overview
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Quick access to each child’s learning progress.
-                  </p>
-                </div>
+              <div className="mb-4">
+                <h2 className="text-lg font-bold text-gray-900">Children’s overview</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Average score of each child across all recorded assessments.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {childrenData.map((child) => {
-                  const improvement =
-                    child.average - child.previousAverage;
-
-                  return (
-                    <div
-                      key={child.id}
-                      className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 font-bold text-[#6D4AFF]">
-                            {child.name
-                              .split(" ")
-                              .map((part) => part[0])
-                              .slice(0, 2)
-                              .join("")}
-                          </div>
-
-                          <div>
-                            <h3 className="font-semibold text-gray-900">
-                              {child.name}
-                            </h3>
-                            <p className="mt-1 text-sm text-gray-500">
-                              {child.section} · {child.className}
-                            </p>
-                          </div>
+                {childSummaries.map((child) => (
+                  <div
+                    key={child.id}
+                    className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 font-bold text-[#6D4AFF]">
+                          {initialsOf(child.name)}
                         </div>
 
-                        <span className="text-xl font-bold text-gray-900">
-                          {child.average}%
-                        </span>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{child.name}</h3>
+                          <p className="mt-1 text-sm text-gray-500">
+                            {[child.levelName, child.className].filter(Boolean).join(" · ") || "—"}
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="mt-5 h-2 overflow-hidden rounded-full bg-gray-100">
-                        <div
-                          className="h-full rounded-full bg-[#6D4AFF]"
-                          style={{
-                            width: `${Math.min(child.average, 100)}%`,
-                          }}
-                        />
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <span
-                          className={`inline-flex items-center gap-1 text-sm ${
-                            improvement >= 0
-                              ? "text-emerald-600"
-                              : "text-red-600"
-                          }`}
-                        >
-                          <TrendingUp size={15} />
-                          {improvement >= 0 ? "+" : ""}
-                          {improvement}% vs previous average
-                        </span>
-
-                        <button
-                          onClick={() => handleChildChange(child.id)}
-                          className="text-sm font-semibold text-[#6D4AFF] hover:underline"
-                        >
-                          View results
-                        </button>
-                      </div>
+                      <span className="text-xl font-bold text-gray-900">
+                        {child.average === null ? "—" : `${child.average}/100`}
+                      </span>
                     </div>
-                  );
-                })}
+
+                    <div className="mt-5 h-2 overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full bg-[#6D4AFF]"
+                        style={{ width: `${Math.min(child.average ?? 0, 100)}%` }}
+                      />
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <span className="text-sm text-gray-500">
+                        {child.count === 0
+                          ? "No result yet"
+                          : `${child.count} result${child.count !== 1 ? "s" : ""} · last on ${formatDate(
+                              child.lastDate
+                            )}`}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => handleChildChange(child.id)}
+                        className="text-sm font-semibold text-[#6D4AFF] hover:underline"
+                      >
+                        View results
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </section>
           )}
@@ -924,6 +834,7 @@ export default function ParentResultsPage() {
           {/* Quick actions */}
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <button
+              type="button"
               onClick={() => navigate("/child-progress")}
               className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:border-purple-200 hover:shadow-md"
             >
@@ -932,18 +843,15 @@ export default function ParentResultsPage() {
               </div>
 
               <div className="flex-1">
-                <p className="font-semibold text-gray-900">
-                  Learning progress
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  Track improvement over time.
-                </p>
+                <p className="font-semibold text-gray-900">Learning progress</p>
+                <p className="mt-1 text-sm text-gray-500">Track improvement over time.</p>
               </div>
 
               <ChevronRight size={18} className="text-gray-400" />
             </button>
 
             <button
+              type="button"
               onClick={() => navigate("/learning-platform")}
               className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:border-purple-200 hover:shadow-md"
             >
@@ -952,18 +860,15 @@ export default function ParentResultsPage() {
               </div>
 
               <div className="flex-1">
-                <p className="font-semibold text-gray-900">
-                  Learning platform
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  Access courses and resources.
-                </p>
+                <p className="font-semibold text-gray-900">Learning platform</p>
+                <p className="mt-1 text-sm text-gray-500">Access course notes.</p>
               </div>
 
               <ChevronRight size={18} className="text-gray-400" />
             </button>
 
             <button
+              type="button"
               onClick={() => navigate("/search")}
               className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:border-purple-200 hover:shadow-md"
             >
@@ -972,12 +877,8 @@ export default function ParentResultsPage() {
               </div>
 
               <div className="flex-1">
-                <p className="font-semibold text-gray-900">
-                  Find a teacher
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  Get additional learning support.
-                </p>
+                <p className="font-semibold text-gray-900">Find a teacher</p>
+                <p className="mt-1 text-sm text-gray-500">Get additional learning support.</p>
               </div>
 
               <ChevronRight size={18} className="text-gray-400" />
@@ -991,26 +892,25 @@ export default function ParentResultsPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setSelectedResult(null);
-            }
+            if (event.target === event.currentTarget) setSelectedResult(null);
           }}
         >
-          <div className="my-auto w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="my-auto w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
             <div className="flex items-start justify-between gap-4 border-b border-gray-100 p-5 sm:p-6">
               <div>
-                <p className="text-sm font-medium text-[#6D4AFF]">
-                  Result details
-                </p>
+                <p className="text-sm font-medium text-[#6D4AFF]">Result details</p>
                 <h2 className="mt-1 text-xl font-bold text-gray-900">
                   {selectedResult.subject}
                 </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  {selectedResult.assessment}
-                </p>
+                <p className="mt-1 text-sm text-gray-500">{selectedResult.assessment}</p>
               </div>
 
               <button
+                type="button"
                 onClick={() => setSelectedResult(null)}
                 aria-label="Close result details"
                 className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
@@ -1025,32 +925,16 @@ export default function ParentResultsPage() {
 
                 <p className="mt-2 text-4xl font-bold text-[#6D4AFF]">
                   {selectedResult.score}
-                  <span className="text-xl text-gray-400">
-                    /{selectedResult.total}
-                  </span>
+                  <span className="text-xl text-gray-400">/{TOTAL}</span>
                 </p>
 
                 <div className="mt-3 flex items-center justify-center gap-2">
                   <span
                     className={`rounded-lg px-3 py-1 text-sm font-bold ${getScoreColor(
-                      Math.round(
-                        (selectedResult.score / selectedResult.total) * 100
-                      )
+                      selectedResult.score
                     )}`}
                   >
-                    Grade{" "}
-                    {getGrade(
-                      Math.round(
-                        (selectedResult.score / selectedResult.total) * 100
-                      )
-                    )}
-                  </span>
-
-                  <span className="rounded-lg bg-white px-3 py-1 text-sm font-medium text-gray-700">
-                    {Math.round(
-                      (selectedResult.score / selectedResult.total) * 100
-                    )}
-                    %
+                    Grade {selectedResult.grade ?? getGrade(selectedResult.score)}
                   </span>
                 </div>
               </div>
@@ -1058,24 +942,20 @@ export default function ParentResultsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-xl border border-gray-100 p-4">
                   <p className="text-xs text-gray-500">Student</p>
-                  <p className="mt-2 font-semibold text-gray-900">
-                    {selectedResult.learner}
-                  </p>
+                  <p className="mt-2 font-semibold text-gray-900">{selectedResult.learner}</p>
                 </div>
 
                 <div className="rounded-xl border border-gray-100 p-4">
                   <p className="text-xs text-gray-500">Teacher</p>
-                  <p className="mt-2 font-semibold text-gray-900">
-                    {selectedResult.teacher}
-                  </p>
+                  <p className="mt-2 font-semibold text-gray-900">{selectedResult.teacher}</p>
                 </div>
 
-                <div className="rounded-xl border border-gray-100 p-4">
-                  <p className="text-xs text-gray-500">Academic term</p>
-                  <p className="mt-2 font-semibold text-gray-900">
-                    {selectedResult.term}
-                  </p>
-                </div>
+                {selectedResult.term && (
+                  <div className="rounded-xl border border-gray-100 p-4">
+                    <p className="text-xs text-gray-500">Academic term</p>
+                    <p className="mt-2 font-semibold text-gray-900">{selectedResult.term}</p>
+                  </div>
+                )}
 
                 <div className="rounded-xl border border-gray-100 p-4">
                   <p className="text-xs text-gray-500">Assessment date</p>
@@ -1083,29 +963,22 @@ export default function ParentResultsPage() {
                     {formatDate(selectedResult.date)}
                   </p>
                 </div>
+              </div>
 
-                <div className="col-span-2 rounded-xl border border-gray-100 p-4">
-                  <p className="text-xs text-gray-500">Class ranking</p>
-                  <p className="mt-2 font-semibold text-gray-900">
-                    {selectedResult.rank} out of {selectedResult.classSize}{" "}
-                    students
+              {selectedResult.comment && (
+                <div>
+                  <h3 className="font-semibold text-gray-900">Teacher’s feedback</h3>
+
+                  <p className="mt-2 rounded-xl bg-gray-50 p-4 text-sm leading-6 text-gray-600">
+                    {selectedResult.comment}
                   </p>
                 </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-gray-900">
-                  Teacher’s feedback
-                </h3>
-
-                <p className="mt-2 rounded-xl bg-gray-50 p-4 text-sm leading-6 text-gray-600">
-                  {selectedResult.comment}
-                </p>
-              </div>
+              )}
             </div>
 
             <div className="flex flex-col-reverse gap-3 border-t border-gray-100 p-5 sm:flex-row sm:justify-end sm:p-6">
               <button
+                type="button"
                 onClick={() => setSelectedResult(null)}
                 className="rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
@@ -1113,148 +986,16 @@ export default function ParentResultsPage() {
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   const learnerId = selectedResult.learnerId;
                   setSelectedResult(null);
-                  navigate(`/child-progress?learner=${learnerId}`);
+                  navigate(`/child-progress?learner=${encodeURIComponent(learnerId)}`);
                 }}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-5 py-3 text-sm font-semibold text-white hover:bg-[#5b3ce0]"
               >
                 <BarChart3 size={17} />
                 View progress
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Awards modal */}
-      {showAwards && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setShowAwards(false);
-              setSelectedAward(null);
-            }
-          }}
-        >
-          <div className="my-auto w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between gap-4 border-b border-gray-100 p-5 sm:p-6">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-amber-50 p-3 text-amber-600">
-                  <Trophy size={23} />
-                </div>
-
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Awards and achievements
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Recognition earned by your children.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  setShowAwards(false);
-                  setSelectedAward(null);
-                }}
-                aria-label="Close awards"
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="max-h-[65vh] space-y-3 overflow-y-auto p-5 sm:p-6">
-              {filteredAwards.length === 0 ? (
-                <div className="py-10 text-center">
-                  <Award size={35} className="mx-auto text-gray-300" />
-                  <p className="mt-3 font-semibold text-gray-900">
-                    No awards yet
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Achievements will appear here when they are recorded.
-                  </p>
-                </div>
-              ) : (
-                filteredAwards.map((award) => (
-                  <button
-                    key={award.id}
-                    onClick={() =>
-                      setSelectedAward(
-                        selectedAward?.id === award.id ? null : award
-                      )
-                    }
-                    className="w-full rounded-2xl border border-gray-100 p-4 text-left transition hover:border-amber-200 hover:bg-amber-50/30"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-xl bg-amber-50 p-3 text-amber-600">
-                        <Medal size={22} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <h3 className="font-semibold text-gray-900">
-                            {award.title}
-                          </h3>
-
-                          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
-                            {award.category}
-                          </span>
-                        </div>
-
-                        <p className="mt-1 text-sm text-gray-600">
-                          {award.learner}
-                        </p>
-
-                        <p className="mt-1 text-xs text-gray-400">
-                          Awarded on {formatDate(award.date)}
-                        </p>
-
-                        {selectedAward?.id === award.id && (
-                          <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">
-                            <p className="text-sm leading-6 text-gray-600">
-                              {award.description}
-                            </p>
-
-                            <div className="rounded-xl bg-white p-3">
-                              <p className="text-xs text-gray-500">
-                                Recognition / reward
-                              </p>
-                              <p className="mt-1 text-sm font-semibold text-gray-900">
-                                {award.reward}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <ChevronDown
-                        size={18}
-                        className={`shrink-0 text-gray-400 transition ${
-                          selectedAward?.id === award.id ? "rotate-180" : ""
-                        }`}
-                      />
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-
-            <div className="border-t border-gray-100 p-5 sm:px-6">
-              <button
-                onClick={() => {
-                  setShowAwards(false);
-                  setSelectedAward(null);
-                  navigate("/awards");
-                }}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6D4AFF] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#5b3ce0]"
-              >
-                <Award size={17} />
-                View all awards
               </button>
             </div>
           </div>
